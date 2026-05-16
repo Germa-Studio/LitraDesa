@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\ProfileController;
+use App\Models\User;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -16,7 +18,41 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
+    $user = Auth::user();
+    
+    $dashboardData = [
+        'user' => [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'status' => $user->status,
+            'qr_code' => $user->qr_code,
+        ],
+    ];
+
+    // Add admin-specific data
+    if ($user->isAdmin()) {
+        $dashboardData['stats'] = [
+            'total_members' => User::members()->count(),
+            'pending_members' => User::members()->pending()->count(),
+            'active_members' => User::members()->active()->count(),
+            'suspended_members' => User::members()->where('status', 'suspended')->count(),
+        ];
+        
+        $dashboardData['recent_members'] = User::members()
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(fn ($member) => [
+                'id' => $member->id,
+                'name' => $member->name,
+                'email' => $member->email,
+                'status' => $member->status,
+                'created_at' => $member->created_at->format('d/m/Y H:i'),
+            ]);
+    }
+
+    return Inertia::render('Dashboard', $dashboardData);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {

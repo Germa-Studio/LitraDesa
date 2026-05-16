@@ -8,6 +8,7 @@ use App\Http\Requests\MemberApprovalRequest;
 use App\Http\Requests\MemberProfileUpdateRequest;
 use App\Http\Requests\MemberRegistrationRequest;
 use App\Models\User;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -18,6 +19,8 @@ use Inertia\Response;
 
 class MemberController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Display a listing of members (Admin only).
      */

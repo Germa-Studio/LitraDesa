@@ -7,13 +7,14 @@ import { useState } from 'react';
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
+    const isAdmin = user?.role === 'admin';
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <nav className="border-b border-gray-100 bg-white">
+            <nav className="border-b border-gray-100 bg-white shadow-sm">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
                         <div className="flex">
@@ -30,6 +31,32 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Dashboard
                                 </NavLink>
+
+                                {isAdmin ? (
+                                    <>
+                                        <NavLink
+                                            href={route('members.index')}
+                                            active={route().current('members.index')}
+                                        >
+                                            Anggota
+                                        </NavLink>
+                                        <NavLink
+                                            href={route('members.pending')}
+                                            active={route().current('members.pending')}
+                                        >
+                                            Pendaftar Baru
+                                        </NavLink>
+                                    </>
+                                ) : (
+                                    user?.id && (
+                                        <NavLink
+                                            href={route('members.show', user.id)}
+                                            active={route().current('members.show')}
+                                        >
+                                            Profil Saya
+                                        </NavLink>
+                                    )
+                                )}
                             </div>
                         </div>
 
@@ -134,6 +161,32 @@ export default function AuthenticatedLayout({ header, children }) {
                         >
                             Dashboard
                         </ResponsiveNavLink>
+
+                        {isAdmin ? (
+                            <>
+                                <ResponsiveNavLink
+                                    href={route('members.index')}
+                                    active={route().current('members.index')}
+                                >
+                                    Anggota
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route('members.pending')}
+                                    active={route().current('members.pending')}
+                                >
+                                    Pendaftar Baru
+                                </ResponsiveNavLink>
+                            </>
+                        ) : (
+                            user?.id && (
+                                <ResponsiveNavLink
+                                    href={route('members.show', user.id)}
+                                    active={route().current('members.show')}
+                                >
+                                    Profil Saya
+                                </ResponsiveNavLink>
+                            )
+                        )}
                     </div>
 
                     <div className="border-t border-gray-200 pb-1 pt-4">
