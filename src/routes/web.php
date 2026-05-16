@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\MemberController;
+use App\Http\Controllers\BookController;
+
 use App\Http\Controllers\ProfileController;
 use App\Models\User;
 use Illuminate\Foundation\Application;
@@ -86,6 +88,25 @@ Route::prefix('members')->name('members.')->group(function () {
         Route::post('/{member}/suspend', [MemberController::class, 'suspend'])->name('suspend');
         Route::post('/{member}/reactivate', [MemberController::class, 'reactivate'])->name('reactivate');
         Route::delete('/{member}', [MemberController::class, 'destroy'])->name('destroy');
+
+// Book Management Routes
+Route::prefix('books')->name('books.')->middleware(['auth'])->group(function () {
+    // Public book browsing
+    Route::get('/', [BookController::class, 'index'])->name('index');
+    Route::get('/{book}', [BookController::class, 'show'])->name('show');
+
+    // Admin-only routes
+    Route::middleware(['admin'])->group(function () {
+        Route::get('/create', [BookController::class, 'create'])->name('create');
+        Route::post('/', [BookController::class, 'store'])->name('store');
+        Route::get('/{book}/edit', [BookController::class, 'edit'])->name('edit');
+        Route::patch('/{book}', [BookController::class, 'update'])->name('update');
+        Route::delete('/{book}', [BookController::class, 'destroy'])->name('destroy');
+        Route::get('/{book}/qr-code', [BookController::class, 'downloadQrCode'])->name('qr-code');
+        Route::post('/bulk-import', [BookController::class, 'bulkImport'])->name('bulk-import');
+    });
+});
+
     });
 });
 
