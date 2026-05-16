@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -96,6 +97,30 @@ class Book extends Model
     }
 
     /**
+     * Get all copies of this book.
+     */
+    public function copies(): HasMany
+    {
+        return $this->hasMany(BookCopy::class);
+    }
+
+    /**
+     * Get available copies of this book.
+     */
+    public function availableCopies(): HasMany
+    {
+        return $this->hasMany(BookCopy::class)->where('status', 'available');
+    }
+
+    /**
+     * Get borrowed copies of this book.
+     */
+    public function borrowedCopies(): HasMany
+    {
+        return $this->hasMany(BookCopy::class)->where('status', 'borrowed');
+    }
+
+    /**
      * Scope a query to only include available books.
      */
     public function scopeAvailable($query)
@@ -138,5 +163,40 @@ class Book extends Model
         }
         
         return "Tersedia ({$this->available_copies}/{$this->total_copies})";
+    }
+
+    /**
+     * Sync available_copies count with actual BookCopy records.
+     */
+    public function syncAvailableCopies(): void
+    {
+        $availableCount = $this->copies()->where('status', 'available')->count();
+        $totalCount = $this->copies()->count();
+        
+        $this->update([
+            'available_copies' => $availableCount,
+            'total_copies' => $totalCount,
+            'is_available' => $availableCount > 0,
+        ]);
+    }
+
+    /**
+     * Create multiple copies of this book.
+     */
+    public function createCopies(int $quantity, array $attributes = []): void
+    {
+        for ($i = 0; $i < $quantity; $i++) {
+            $this->copies()->create($attributes);
+        }
+        
+        $this->syncAvailableCopies();
+    }
+
+    /**
+     * Get the count of copies by status.
+     */
+    public function getCopiesCountByStatus(string $status): int
+    {
+        return $this->copies()->where('status', $status)->count();
     }
 }

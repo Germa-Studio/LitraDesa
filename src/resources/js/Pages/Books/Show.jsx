@@ -154,7 +154,7 @@ export default function Show({ auth, book }) {
                                     )}
 
                                     {/* Admin Actions */}
-                                    {auth.user.is_admin && (
+                                    {auth.user.role === 'admin' && (
                                         <div className="flex gap-3 pt-4">
                                             <Link
                                                 href={route('books.edit', book.id)}

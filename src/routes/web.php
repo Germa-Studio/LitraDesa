@@ -1,8 +1,8 @@
 <?php
 
-use App\Http\Controllers\MemberController;
 use App\Http\Controllers\BookController;
-
+use App\Http\Controllers\BookCopyController;
+use App\Http\Controllers\MemberController;
 use App\Http\Controllers\ProfileController;
 use App\Models\User;
 use Illuminate\Foundation\Application;
@@ -88,26 +88,45 @@ Route::prefix('members')->name('members.')->group(function () {
         Route::post('/{member}/suspend', [MemberController::class, 'suspend'])->name('suspend');
         Route::post('/{member}/reactivate', [MemberController::class, 'reactivate'])->name('reactivate');
         Route::delete('/{member}', [MemberController::class, 'destroy'])->name('destroy');
+    });
+});
 
 // Book Management Routes
 Route::prefix('books')->name('books.')->middleware(['auth'])->group(function () {
     // Public book browsing
     Route::get('/', [BookController::class, 'index'])->name('index');
-    Route::get('/{book}', [BookController::class, 'show'])->name('show');
 
-    // Admin-only routes
+    // Admin-only routes (must come before {book} wildcard route)
     Route::middleware(['admin'])->group(function () {
         Route::get('/create', [BookController::class, 'create'])->name('create');
         Route::post('/', [BookController::class, 'store'])->name('store');
+        Route::post('/bulk-import', [BookController::class, 'bulkImport'])->name('bulk-import');
+    });
+    
+    // Wildcard routes (must come after specific routes)
+    Route::get('/{book}', [BookController::class, 'show'])->name('show');
+    
+    // Admin-only wildcard routes
+    Route::middleware(['admin'])->group(function () {
         Route::get('/{book}/edit', [BookController::class, 'edit'])->name('edit');
         Route::patch('/{book}', [BookController::class, 'update'])->name('update');
         Route::delete('/{book}', [BookController::class, 'destroy'])->name('destroy');
         Route::get('/{book}/qr-code', [BookController::class, 'downloadQrCode'])->name('qr-code');
-        Route::post('/bulk-import', [BookController::class, 'bulkImport'])->name('bulk-import');
+        
+        // Book Copy Management Routes
+        Route::post('/{book}/copies', [BookCopyController::class, 'store'])->name('copies.store');
+        Route::get('/{book}/copies/qr-codes', [BookCopyController::class, 'downloadAllQrCodes'])->name('copies.qr-codes');
     });
 });
 
-    });
+// Book Copy Routes (Admin only)
+Route::prefix('book-copies')->name('book-copies.')->middleware(['auth', 'admin'])->group(function () {
+    Route::patch('/{bookCopy}', [BookCopyController::class, 'update'])->name('update');
+    Route::post('/{bookCopy}/mark-damaged', [BookCopyController::class, 'markAsDamaged'])->name('mark-damaged');
+    Route::post('/{bookCopy}/mark-lost', [BookCopyController::class, 'markAsLost'])->name('mark-lost');
+    Route::post('/{bookCopy}/mark-available', [BookCopyController::class, 'markAsAvailable'])->name('mark-available');
+    Route::get('/{bookCopy}/qr-code', [BookCopyController::class, 'downloadQrCode'])->name('qr-code');
+    Route::delete('/{bookCopy}', [BookCopyController::class, 'destroy'])->name('destroy');
 });
 
 require __DIR__ . '/auth.php';
