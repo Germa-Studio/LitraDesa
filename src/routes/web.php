@@ -19,7 +19,7 @@ Route::get('/', function () {
 
 Route::get('/dashboard', function () {
     $user = Auth::user();
-    
+
     $dashboardData = [
         'user' => [
             'name' => $user->name,
@@ -38,12 +38,12 @@ Route::get('/dashboard', function () {
             'active_members' => User::members()->active()->count(),
             'suspended_members' => User::members()->where('status', 'suspended')->count(),
         ];
-        
+
         $dashboardData['recent_members'] = User::members()
             ->latest()
             ->take(5)
             ->get()
-            ->map(fn ($member) => [
+            ->map(fn($member) => [
                 'id' => $member->id,
                 'name' => $member->name,
                 'email' => $member->email,
@@ -72,6 +72,10 @@ Route::prefix('members')->name('members.')->group(function () {
         Route::get('/{member}', [MemberController::class, 'show'])->name('show');
         Route::get('/{member}/edit', [MemberController::class, 'edit'])->name('edit');
         Route::patch('/{member}', [MemberController::class, 'update'])->name('update');
+
+        // QR Code routes
+        Route::get('/{member}/qr-code', [MemberController::class, 'qrCode'])->name('qr-code');
+        Route::post('/verify-qr', [MemberController::class, 'verifyQrCode'])->name('verify-qr');
     });
 
     // Admin-only routes
@@ -85,4 +89,4 @@ Route::prefix('members')->name('members.')->group(function () {
     });
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

@@ -4,20 +4,27 @@ FROM php:8.4-cli-alpine
 RUN apk add --no-cache \
     postgresql-dev \
     libzip-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    imagemagick-dev \
+    imagemagick \
     curl \
     linux-headers
 
 # Install PHP extensions
-RUN docker-php-ext-install -j$(nproc) \
-    pdo_pgsql \
-    pgsql \
-    pcntl \
-    sockets
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo_pgsql \
+        pgsql \
+        pcntl \
+        sockets \
+        gd
 
-# Install Redis extension
+# Install Redis and Imagick extensions
 RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
+    && pecl install redis imagick \
+    && docker-php-ext-enable redis imagick \
     && apk del .build-deps
 
 # Install Composer

@@ -8,10 +8,14 @@ use App\Http\Requests\MemberApprovalRequest;
 use App\Http\Requests\MemberProfileUpdateRequest;
 use App\Http\Requests\MemberRegistrationRequest;
 use App\Models\User;
+use App\Services\QrCodeService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -32,7 +36,7 @@ class MemberController extends Controller
             ->with('approver:id,name')
             ->latest()
             ->paginate(15)
-            ->through(fn ($member) => [
+            ->through(fn($member) => [
                 'id' => $member->id,
                 'name' => $member->name,
                 'email' => $member->email,
@@ -62,7 +66,7 @@ class MemberController extends Controller
             ->pending()
             ->latest()
             ->paginate(15)
-            ->through(fn ($member) => [
+            ->through(fn($member) => [
                 'id' => $member->id,
                 'name' => $member->name,
                 'email' => $member->email,
@@ -180,26 +184,59 @@ class MemberController extends Controller
      */
     public function approve(MemberApprovalRequest $request, User $member): RedirectResponse
     {
-        $this->authorize('approve', $member);
+        Log::info('=== MEMBER APPROVAL START ===');
+        Log::info('Request Data:', $request->all());
+        Log::info('Member ID:', ['id' => $member->id, 'name' => $member->name, 'status' => $member->status]);
+        Log::info('Current User:', ['id' => Auth::id(), 'role' => Auth::user()->role]);
 
-        if (!$member->isPending()) {
-            return back()->with('error', 'Hanya anggota dengan status pending yang dapat disetujui.');
+        try {
+            Log::info('Checking authorization...');
+            $this->authorize('approve', $member);
+            Log::info('Authorization passed');
+
+            if (!$member->isPending()) {
+                Log::warning('Member is not pending', ['status' => $member->status]);
+                return back()->with('error', 'Hanya anggota dengan status pending yang dapat disetujui.');
+            }
+
+            Log::info('Validating request data...');
+            $validated = $request->validated();
+            Log::info('Validated data:', $validated);
+
+            // Generate QR code if member doesn't have one
+            if (empty($member->qr_code) && $validated['status'] === 'active') {
+                $qrCode = 'MBR-' . strtoupper(Str::random(10));
+                Log::info('Generating QR code for member', ['qr_code' => $qrCode]);
+            } else {
+                $qrCode = $member->qr_code;
+            }
+
+            Log::info('Updating member...');
+            $member->update([
+                'status' => $validated['status'],
+                'approved_by' => Auth::id(),
+                'approved_at' => now(),
+                'rejection_reason' => $validated['rejection_reason'] ?? null,
+                'qr_code' => $qrCode,
+            ]);
+            Log::info('Member updated successfully', ['new_status' => $member->fresh()->status, 'qr_code' => $member->fresh()->qr_code]);
+
+            $message = $validated['status'] === 'active'
+                ? 'Anggota berhasil disetujui.'
+                : 'Anggota berhasil ditolak.';
+
+            Log::info('=== MEMBER APPROVAL SUCCESS ===', ['message' => $message]);
+            return redirect()->route('members.pending')->with('success', $message);
+        } catch (\Exception $e) {
+            Log::error('=== MEMBER APPROVAL ERROR ===');
+            Log::error('Exception:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
-
-        $validated = $request->validated();
-
-        $member->update([
-            'status' => $validated['status'],
-            'approved_by' => Auth::id(),
-            'approved_at' => now(),
-            'rejection_reason' => $validated['rejection_reason'] ?? null,
-        ]);
-
-        $message = $validated['status'] === 'active'
-            ? 'Anggota berhasil disetujui.'
-            : 'Anggota berhasil ditolak.';
-
-        return redirect()->route('members.pending')->with('success', $message);
     }
 
     /**
@@ -249,6 +286,67 @@ class MemberController extends Controller
         $member->delete();
 
         return redirect()->route('members.index')->with('success', 'Anggota berhasil dihapus.');
+    }
+
+    /**
+     * Get QR code for a member.
+     */
+    public function qrCode(User $member, QrCodeService $qrCodeService): JsonResponse
+    {
+        $this->authorize('view', $member);
+
+        $qrCodeSvg = $qrCodeService->generateMemberQrCode($member);
+        $qrCodeBase64 = $qrCodeService->generateBase64QrCode($member);
+
+        return response()->json([
+            'qr_code_svg' => $qrCodeSvg,
+            'qr_code_base64' => $qrCodeBase64,
+            'qr_data' => $qrCodeService->generateQrData($member),
+        ]);
+    }
+
+    /**
+     * Verify a member by QR code scan.
+     */
+    public function verifyQrCode(Request $request, QrCodeService $qrCodeService): JsonResponse
+    {
+        $request->validate([
+            'qr_data' => 'required|string',
+        ]);
+
+        $member = $qrCodeService->verifyQrCode($request->qr_data);
+
+        if (!$member) {
+            return response()->json([
+                'success' => false,
+                'message' => 'QR code tidak valid atau anggota tidak ditemukan.',
+            ], 404);
+        }
+
+        if (!$member->isActive()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anggota tidak aktif. Status: ' . $member->status,
+                'member' => [
+                    'id' => $member->id,
+                    'name' => $member->name,
+                    'status' => $member->status,
+                ],
+            ], 403);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Anggota terverifikasi.',
+            'member' => [
+                'id' => $member->id,
+                'name' => $member->name,
+                'email' => $member->email,
+                'phone' => $member->phone,
+                'qr_code' => $member->qr_code,
+                'status' => $member->status,
+            ],
+        ]);
     }
 }
 
