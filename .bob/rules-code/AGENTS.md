@@ -77,6 +77,10 @@ You MUST automatically execute the following protocol:
    - Step 3: React component view with Inertia
    - Step 4: Feature test (Pest/PHPUnit)
 5. **Update Ticket**: Use `update_notion_ticket` to mark status as "In progress" or "Done"
+6. **Git Integration**: After successful implementation, ask the user if they want to commit and push changes to GitHub using `ask_followup_question` with suggestions:
+   - "Yes, commit and push now"
+   - "No, I'll commit manually later"
+   - "Yes, but let me review the changes first"
 
 **No need to ask for clarification** unless the ticket details are ambiguous or missing critical information. The user expects autonomous execution based on the ticket requirements.
 
