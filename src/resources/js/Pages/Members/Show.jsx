@@ -1,25 +1,28 @@
-import { Head, Link } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import SecondaryButton from '@/Components/SecondaryButton';
+import { Head, Link } from "@inertiajs/react";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import SecondaryButton from "@/Components/SecondaryButton";
+import MemberQrCard from "@/Components/MemberQrCard";
 
 export default function Show({ auth, member }) {
     const getStatusBadge = (status) => {
         const badges = {
-            active: 'bg-green-100 text-green-800',
-            pending: 'bg-yellow-100 text-yellow-800',
-            suspended: 'bg-red-100 text-red-800',
-            rejected: 'bg-gray-100 text-gray-800',
+            active: "bg-green-100 text-green-800",
+            pending: "bg-yellow-100 text-yellow-800",
+            suspended: "bg-red-100 text-red-800",
+            rejected: "bg-gray-100 text-gray-800",
         };
 
         const labels = {
-            active: 'Aktif',
-            pending: 'Menunggu Persetujuan',
-            suspended: 'Ditangguhkan',
-            rejected: 'Ditolak',
+            active: "Aktif",
+            pending: "Menunggu Persetujuan",
+            suspended: "Ditangguhkan",
+            rejected: "Ditolak",
         };
 
         return (
-            <span className={`px-3 py-1 text-sm font-semibold rounded-full ${badges[status]}`}>
+            <span
+                className={`px-3 py-1 text-sm font-semibold rounded-full ${badges[status]}`}
+            >
                 {labels[status]}
             </span>
         );
@@ -34,7 +37,7 @@ export default function Show({ auth, member }) {
                         Profil Anggota
                     </h2>
                     {auth.user.id === member.id && (
-                        <Link href={route('members.edit', member.id)}>
+                        <Link href={route("members.edit", member.id)}>
                             <SecondaryButton>Edit Profil</SecondaryButton>
                         </Link>
                     )}
@@ -61,31 +64,28 @@ export default function Show({ auth, member }) {
                             </div>
 
                             {/* QR Code Section */}
-                            {member.qr_code && member.status === 'active' && (
-                                <div className="mb-6 p-4 bg-indigo-50 rounded-lg">
-                                    <h4 className="text-sm font-semibold text-indigo-900 mb-2">
-                                        Kode QR Anggota
-                                    </h4>
-                                    <p className="text-2xl font-mono text-indigo-700">
-                                        {member.qr_code}
-                                    </p>
-                                    <p className="text-xs text-indigo-600 mt-1">
-                                        Gunakan kode ini untuk peminjaman buku
-                                    </p>
+                            {member.qr_code && member.status === "active" && (
+                                <div className="mb-6">
+                                    <MemberQrCard
+                                        memberId={member.id}
+                                        memberName={member.name}
+                                        qrCode={member.qr_code}
+                                    />
                                 </div>
                             )}
 
                             {/* Rejection Notice */}
-                            {member.status === 'rejected' && member.rejection_reason && (
-                                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                                    <h4 className="text-sm font-semibold text-red-900 mb-2">
-                                        Alasan Penolakan
-                                    </h4>
-                                    <p className="text-sm text-red-700">
-                                        {member.rejection_reason}
-                                    </p>
-                                </div>
-                            )}
+                            {member.status === "rejected" &&
+                                member.rejection_reason && (
+                                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                        <h4 className="text-sm font-semibold text-red-900 mb-2">
+                                            Alasan Penolakan
+                                        </h4>
+                                        <p className="text-sm text-red-700">
+                                            {member.rejection_reason}
+                                        </p>
+                                    </div>
+                                )}
 
                             {/* Information Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -93,14 +93,18 @@ export default function Show({ auth, member }) {
                                     <h4 className="text-sm font-medium text-gray-500 mb-1">
                                         Email
                                     </h4>
-                                    <p className="text-base text-gray-900">{member.email}</p>
+                                    <p className="text-base text-gray-900">
+                                        {member.email}
+                                    </p>
                                 </div>
 
                                 <div>
                                     <h4 className="text-sm font-medium text-gray-500 mb-1">
                                         Nomor Telepon
                                     </h4>
-                                    <p className="text-base text-gray-900">{member.phone}</p>
+                                    <p className="text-base text-gray-900">
+                                        {member.phone}
+                                    </p>
                                 </div>
 
                                 <div>
@@ -116,7 +120,9 @@ export default function Show({ auth, member }) {
                                     <h4 className="text-sm font-medium text-gray-500 mb-1">
                                         Alamat
                                     </h4>
-                                    <p className="text-base text-gray-900">{member.address}</p>
+                                    <p className="text-base text-gray-900">
+                                        {member.address}
+                                    </p>
                                 </div>
 
                                 {member.ktp_photo_url && (
@@ -158,7 +164,11 @@ export default function Show({ auth, member }) {
                             {/* Back Button */}
                             <div className="mt-6 pt-6 border-t">
                                 <Link
-                                    href={auth.user.role === 'admin' ? route('members.index') : route('dashboard')}
+                                    href={
+                                        auth.user.role === "admin"
+                                            ? route("members.index")
+                                            : route("dashboard")
+                                    }
                                     className="text-sm text-indigo-600 hover:text-indigo-900"
                                 >
                                     ← Kembali

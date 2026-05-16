@@ -1,33 +1,32 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import PrimaryButton from '@/Components/PrimaryButton';
-import DangerButton from '@/Components/DangerButton';
-import Modal from '@/Components/Modal';
-import { useState } from 'react';
-import InputLabel from '@/Components/InputLabel';
-import TextInput from '@/Components/TextInput';
-import InputError from '@/Components/InputError';
+import { Head, Link, useForm } from "@inertiajs/react";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import PrimaryButton from "@/Components/PrimaryButton";
+import DangerButton from "@/Components/DangerButton";
+import Modal from "@/Components/Modal";
+import { useState } from "react";
+import InputLabel from "@/Components/InputLabel";
+import TextInput from "@/Components/TextInput";
+import InputError from "@/Components/InputError";
 
 export default function Pending({ auth, pendingMembers }) {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [selectedMember, setSelectedMember] = useState(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
-        status: '',
-        rejection_reason: '',
+        status: "",
+        rejection_reason: "",
     });
 
     const handleApprove = (memberId) => {
-        if (confirm('Apakah Anda yakin ingin menyetujui anggota ini?')) {
-            post(route('members.approve', memberId), {
-                data: { status: 'active' },
-            });
+        if (confirm("Apakah Anda yakin ingin menyetujui anggota ini?")) {
+            setData("status", "active");
+            post(route("members.approve", memberId));
         }
     };
 
     const openRejectModal = (member) => {
         setSelectedMember(member);
-        setData({ status: 'rejected', rejection_reason: '' });
+        setData({ status: "rejected", rejection_reason: "" });
         setShowRejectModal(true);
     };
 
@@ -39,7 +38,7 @@ export default function Pending({ auth, pendingMembers }) {
 
     const handleReject = (e) => {
         e.preventDefault();
-        post(route('members.approve', selectedMember.id), {
+        post(route("members.approve", selectedMember.id), {
             onSuccess: () => closeRejectModal(),
         });
     };
@@ -53,7 +52,7 @@ export default function Pending({ auth, pendingMembers }) {
                         Pendaftar Baru
                     </h2>
                     <Link
-                        href={route('members.index')}
+                        href={route("members.index")}
                         className="text-sm text-gray-600 hover:text-gray-900 underline"
                     >
                         Kembali ke Daftar Anggota
@@ -102,7 +101,8 @@ export default function Pending({ auth, pendingMembers }) {
                                                         {member.name}
                                                     </h3>
                                                     <p className="text-sm text-gray-500 mt-1">
-                                                        Mendaftar pada: {member.created_at}
+                                                        Mendaftar pada:{" "}
+                                                        {member.created_at}
                                                     </p>
 
                                                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -129,7 +129,9 @@ export default function Pending({ auth, pendingMembers }) {
                                                                 Nomor KTP
                                                             </p>
                                                             <p className="text-sm text-gray-900 font-mono">
-                                                                {member.ktp_number}
+                                                                {
+                                                                    member.ktp_number
+                                                                }
                                                             </p>
                                                         </div>
 
@@ -148,7 +150,9 @@ export default function Pending({ auth, pendingMembers }) {
                                                                     Foto KTP
                                                                 </p>
                                                                 <img
-                                                                    src={member.ktp_photo_url}
+                                                                    src={
+                                                                        member.ktp_photo_url
+                                                                    }
                                                                     alt="KTP"
                                                                     className="max-w-md rounded border"
                                                                 />
@@ -160,12 +164,16 @@ export default function Pending({ auth, pendingMembers }) {
 
                                             <div className="mt-6 flex space-x-3">
                                                 <PrimaryButton
-                                                    onClick={() => handleApprove(member.id)}
+                                                    onClick={() =>
+                                                        handleApprove(member.id)
+                                                    }
                                                 >
                                                     Setujui
                                                 </PrimaryButton>
                                                 <DangerButton
-                                                    onClick={() => openRejectModal(member)}
+                                                    onClick={() =>
+                                                        openRejectModal(member)
+                                                    }
                                                 >
                                                     Tolak
                                                 </DangerButton>
@@ -181,13 +189,15 @@ export default function Pending({ auth, pendingMembers }) {
                                     {pendingMembers.links.map((link, index) => (
                                         <Link
                                             key={index}
-                                            href={link.url || '#'}
+                                            href={link.url || "#"}
                                             className={`px-3 py-2 text-sm rounded ${
                                                 link.active
-                                                    ? 'bg-indigo-600 text-white'
-                                                    : 'bg-white text-gray-700 hover:bg-gray-50 border'
-                                            } ${!link.url && 'opacity-50 cursor-not-allowed'}`}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                                    ? "bg-indigo-600 text-white"
+                                                    : "bg-white text-gray-700 hover:bg-gray-50 border"
+                                            } ${!link.url && "opacity-50 cursor-not-allowed"}`}
+                                            dangerouslySetInnerHTML={{
+                                                __html: link.label,
+                                            }}
                                             preserveScroll
                                         />
                                     ))}
@@ -206,9 +216,9 @@ export default function Pending({ auth, pendingMembers }) {
                     </h2>
 
                     <p className="mt-1 text-sm text-gray-600">
-                        Anda akan menolak pendaftaran dari{' '}
-                        <strong>{selectedMember?.name}</strong>. Silakan berikan alasan
-                        penolakan.
+                        Anda akan menolak pendaftaran dari{" "}
+                        <strong>{selectedMember?.name}</strong>. Silakan berikan
+                        alasan penolakan.
                     </p>
 
                     <div className="mt-6">
@@ -221,14 +231,17 @@ export default function Pending({ auth, pendingMembers }) {
                             id="rejection_reason"
                             value={data.rejection_reason}
                             onChange={(e) =>
-                                setData('rejection_reason', e.target.value)
+                                setData("rejection_reason", e.target.value)
                             }
                             className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                             rows="4"
                             required
                         />
 
-                        <InputError message={errors.rejection_reason} className="mt-2" />
+                        <InputError
+                            message={errors.rejection_reason}
+                            className="mt-2"
+                        />
                     </div>
 
                     <div className="mt-6 flex justify-end space-x-3">
