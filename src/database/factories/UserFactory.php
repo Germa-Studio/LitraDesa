@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -28,6 +30,12 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'role' => 'member',
+            'status' => 'pending',
+            'phone' => '08' . fake()->numerify('##########'),
+            'address' => fake()->address(),
+            'ktp_number' => fake()->numerify('################'),
+            'qr_code' => 'MBR-' . strtoupper(Str::random(10)),
             'remember_token' => Str::random(10),
         ];
     }
@@ -39,6 +47,50 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is an admin.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin',
+            'status' => 'active',
+            'qr_code' => 'ADM-' . strtoupper(Str::random(10)),
+            'approved_at' => now(),
+        ]);
+    }
+
+    /**
+     * Indicate that the user is an active member.
+     */
+    public function active(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'active',
+            'approved_at' => now(),
+        ]);
+    }
+
+    /**
+     * Indicate that the user is pending approval.
+     */
+    public function pending(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'pending',
+        ]);
+    }
+
+    /**
+     * Indicate that the user is suspended.
+     */
+    public function suspended(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'suspended',
         ]);
     }
 }
