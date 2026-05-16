@@ -41,7 +41,7 @@ LitraDesa is a **hybrid physical-digital village library management system** for
 
 ## Tech Stack (Planning Phase)
 
-- **Backend**: Laravel 11 (PHP 8.3)
+- **Backend**: Laravel 11 (PHP 8.4)
 - **Frontend**: Next.js 14 OR React with Inertia.js (decision pending)
 - **Database**: PostgreSQL
 - **Real-time**: Laravel Reverb

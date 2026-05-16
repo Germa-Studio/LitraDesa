@@ -1,5 +1,5 @@
 # Base stage with common dependencies
-FROM php:8.3-fpm-alpine AS base
+FROM php:8.4-fpm-alpine AS base
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -11,7 +11,8 @@ RUN apk add --no-cache \
     oniguruma-dev \
     curl \
     git \
-    unzip
+    unzip \
+    linux-headers
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -26,7 +27,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         bcmath
 
 # Install Redis extension
-RUN pecl install redis && docker-php-ext-enable redis
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apk del .build-deps
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -37,7 +41,10 @@ WORKDIR /var/www/html
 FROM base AS development
 
 # Install Xdebug for debugging
-RUN pecl install xdebug && docker-php-ext-enable xdebug
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+    && pecl install xdebug \
+    && docker-php-ext-enable xdebug \
+    && apk del .build-deps
 
 # Copy custom PHP configuration
 COPY docker/app/php.ini /usr/local/etc/php/conf.d/custom.ini

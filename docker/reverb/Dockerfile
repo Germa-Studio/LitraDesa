@@ -1,10 +1,11 @@
-FROM php:8.3-cli-alpine
+FROM php:8.4-cli-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
     postgresql-dev \
     libzip-dev \
-    curl
+    curl \
+    linux-headers
 
 # Install PHP extensions
 RUN docker-php-ext-install -j$(nproc) \
@@ -14,7 +15,10 @@ RUN docker-php-ext-install -j$(nproc) \
     sockets
 
 # Install Redis extension
-RUN pecl install redis && docker-php-ext-enable redis
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apk del .build-deps
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

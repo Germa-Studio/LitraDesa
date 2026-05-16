@@ -1,6 +1,3 @@
-# Laravel application directory
-src/
-
 # Docker
 docker-compose.override.yml
 
@@ -25,8 +22,5 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# Bob sessions (keep for reference but can be ignored)
-# bob_sessions/
 
 # Made with Bob
