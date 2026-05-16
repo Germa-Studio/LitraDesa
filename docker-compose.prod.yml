@@ -1,0 +1,53 @@
+services:
+  app:
+    build:
+      target: production
+    volumes: []  # Remove volume mounts
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
+  web:
+    restart: unless-stopped
+    volumes:
+      - ./src/public:/var/www/html/public:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  db:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
+  redis:
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  reverb:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  # Remove node service in production (assets pre-built)
+  node:
+    profiles:
+      - development
+
+# Made with Bob

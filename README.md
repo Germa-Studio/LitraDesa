@@ -91,8 +91,8 @@ Get LitraDesa up and running in 5 minutes:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/litradesa.git
-cd litradesa
+git clone git@github.com:Germa-Studio/LitraDesa.git
+cd LitraDesa
 ```
 
 ### 2. Run Initialization Script
