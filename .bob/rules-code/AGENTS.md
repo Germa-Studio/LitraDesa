@@ -56,6 +56,30 @@ When implementing features for LitraDesa, prioritize these non-obvious aspects:
 - Docker deployment for easy village-level installation
 - Consider Inertia.js vs Next.js decision impact on offline capability
 
+## Simplified Ticket Execution Workflow
+
+When the user provides a simple prompt like:
+- "Bob, complete ticket: [Ticket Name]"
+- "Implement ticket: [Ticket Name]"
+- "Build feature: [Ticket Name]"
+
+You MUST automatically execute the following protocol:
+
+1. **Search Notion**: Use `search_notion_tickets` to find the ticket by name
+2. **Get Details**: Use `get_notion_ticket_details` to retrieve full requirements
+3. **Apply Skills**: Automatically apply instructions from:
+   - `/.bob/skills/fullstack-bridge-orchestrator.md` (4-step protocol)
+   - `/.bob/skills/backend-laravel-standards.md` (Laravel standards)
+   - `/.bob/skills/frontend-inertia-react-standards.md` (React/Inertia standards)
+4. **Execute Implementation**: Follow the 4-step protocol:
+   - Step 1: Database migration + Eloquent model
+   - Step 2: Form Request + Controller + Routes
+   - Step 3: React component view with Inertia
+   - Step 4: Feature test (Pest/PHPUnit)
+5. **Update Ticket**: Use `update_notion_ticket` to mark status as "In progress" or "Done"
+
+**No need to ask for clarification** unless the ticket details are ambiguous or missing critical information. The user expects autonomous execution based on the ticket requirements.
+
 ## Key References
 - See `/docs/PRD.md` for complete requirements
 - Main `/AGENTS.md` for project overview
