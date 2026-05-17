@@ -35,6 +35,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                 {isAdmin ? (
                                     <>
                                         <NavLink
+                                            href={route('books.index')}
+                                            active={route().current('books.*')}
+                                        >
+                                            Katalog Buku
+                                        </NavLink>
+                                        <NavLink
                                             href={route('members.index')}
                                             active={route().current('members.index')}
                                         >
@@ -164,6 +170,12 @@ export default function AuthenticatedLayout({ header, children }) {
 
                         {isAdmin ? (
                             <>
+                                <ResponsiveNavLink
+                                    href={route('books.index')}
+                                    active={route().current('books.*')}
+                                >
+                                    Katalog Buku
+                                </ResponsiveNavLink>
                                 <ResponsiveNavLink
                                     href={route('members.index')}
                                     active={route().current('members.index')}

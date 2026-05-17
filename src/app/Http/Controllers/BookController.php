@@ -76,11 +76,17 @@ class BookController extends Controller
 
         $book = Book::create($validated);
 
-        // Generate QR code image
+        // Create individual book copies based on total_copies
+        $totalCopies = $validated['total_copies'] ?? 1;
+        $book->createCopies($totalCopies, [
+            'location_code' => $validated['location'] ?? null,
+        ]);
+
+        // Generate QR code image for the book (legacy support)
         $this->generateQrCodeImage($book);
 
         return redirect()->route('books.show', $book)
-            ->with('success', 'Buku berhasil ditambahkan ke katalog.');
+            ->with('success', 'Buku berhasil ditambahkan ke katalog dengan ' . $totalCopies . ' eksemplar.');
     }
 
     /**
@@ -88,10 +94,18 @@ class BookController extends Controller
      */
     public function show(Book $book): Response
     {
-        $book->load('category');
+        $book->load(['category', 'copies']);
 
         return Inertia::render('Books/Show', [
             'book' => $book,
+            'copies' => $book->copies,
+            'copiesStats' => [
+                'available' => $book->getCopiesCountByStatus('available'),
+                'borrowed' => $book->getCopiesCountByStatus('borrowed'),
+                'damaged' => $book->getCopiesCountByStatus('damaged'),
+                'lost' => $book->getCopiesCountByStatus('lost'),
+                'maintenance' => $book->getCopiesCountByStatus('maintenance'),
+            ],
         ]);
     }
 

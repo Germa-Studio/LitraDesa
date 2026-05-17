@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -39,10 +40,10 @@ return new class extends Migration
             $table->index('qr_code');
             $table->index('is_available');
             $table->index('book_category_id');
-            
-            // Full-text search index for PostgreSQL
-            $table->index(['title', 'author', 'description'], 'books_search_idx', 'gin');
         });
+        
+        // Full-text search index for PostgreSQL using raw SQL
+        DB::statement('CREATE INDEX books_search_idx ON books USING gin(to_tsvector(\'indonesian\', coalesce(title, \'\') || \' \' || coalesce(author, \'\') || \' \' || coalesce(description, \'\')))');
     }
 
     /**
