@@ -116,6 +116,9 @@ services:
     image: caddy:2-alpine
     container_name: litradesa_caddy
     restart: unless-stopped
+    dns:
+      - ${DOCKER_DNS_PRIMARY:-1.1.1.1}
+      - ${DOCKER_DNS_SECONDARY:-8.8.8.8}
     environment:
       APP_DOMAIN: ${APP_DOMAIN:-localhost}
     ports:
