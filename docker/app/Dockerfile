@@ -54,8 +54,22 @@ COPY docker/app/php.ini /usr/local/etc/php/conf.d/custom.ini
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html
 
+# Runtime stage for production deployments that mount the application source.
+FROM base AS runtime
+
+# Copy custom PHP configuration
+COPY docker/app/php.ini /usr/local/etc/php/conf.d/custom.ini
+
+# Enable OPcache
+RUN docker-php-ext-install opcache
+COPY docker/app/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+
+EXPOSE 9000
+
+CMD ["php-fpm"]
+
 # Production stage
-FROM base AS production
+FROM runtime AS production
 
 # Copy application files
 COPY src /var/www/html
@@ -63,19 +77,10 @@ COPY src /var/www/html
 # Install dependencies (no dev)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Optimize Laravel
-RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
-
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
-
-# Enable OPcache
-RUN docker-php-ext-install opcache
-COPY docker/app/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 USER www-data
 

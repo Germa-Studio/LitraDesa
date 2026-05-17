@@ -125,8 +125,8 @@ Once initialization completes, access:
 - **Database**: localhost:5432
 
 **Default Admin Credentials**:
-- Email: `admin@litradesa.local`
-- Password: `password`
+- Email: `admin@litradesa.id`
+- Password: `admin123`
 
 > ⚠️ **Important**: Change the default password immediately after first login!
 
@@ -344,31 +344,37 @@ docker-compose restart node
 
 ## 🚢 Production Deployment
 
-### Building for Production
+Production deployment is supported with a standalone Compose file and Caddy for automatic HTTPS.
+
+For Tencent CVM, follow the full guide in [`docs/DEPLOYMENT_TENCENT_CVM.md`](docs/DEPLOYMENT_TENCENT_CVM.md).
+
+### Quick Production Deploy
 
 ```bash
-# Build production images
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml build
+# Copy and edit the production environment
+cp src/.env.production.example src/.env
+nano src/.env
 
-# Start production containers
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Deploy with HTTPS
+chmod +x scripts/deploy-production.sh
+./scripts/deploy-production.sh
 ```
 
 ### Production Checklist
 
 Before deploying to production:
 
-- [ ] Update `.env` with production values
+- [ ] Point a real domain to the server public IP
+- [ ] Open only ports 22, 80, and 443 in the cloud firewall/security group
+- [ ] Update `src/.env` with production values
 - [ ] Set `APP_ENV=production` and `APP_DEBUG=false`
-- [ ] Generate strong `APP_KEY`
+- [ ] Set `APP_URL`, `APP_DOMAIN`, `REVERB_HOST`, and `VITE_REVERB_HOST` to your domain
 - [ ] Use secure database credentials
-- [ ] Configure SSL/TLS certificates
+- [ ] Use random `REVERB_APP_KEY` and `REVERB_APP_SECRET`
+- [ ] Let the deploy script generate `APP_KEY` on first deploy
 - [ ] Set up proper backup strategy
 - [ ] Configure monitoring and logging
-- [ ] Enable rate limiting
-- [ ] Review security headers
 - [ ] Test offline functionality
-- [ ] Optimize images and assets
 - [ ] Set up CDN for static assets (optional)
 
 ### Environment Variables for Production
@@ -376,27 +382,31 @@ Before deploying to production:
 ```env
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://your-domain.com
+APP_URL=https://litradesa.example.com
+APP_DOMAIN=litradesa.example.com
 
 DB_PASSWORD=<strong-random-password>
-REDIS_PASSWORD=<strong-random-password>
 
-# SSL Configuration
+REVERB_HOST=litradesa.example.com
+REVERB_PORT=443
 REVERB_SCHEME=https
+VITE_REVERB_HOST=litradesa.example.com
+VITE_REVERB_PORT=443
 VITE_REVERB_SCHEME=https
 ```
 
-### SSL/TLS Setup
-
-For production, configure SSL certificates:
+### Production Operations
 
 ```bash
-# Using Let's Encrypt (recommended)
-# Add certbot to docker-compose.prod.yml
-# Or use reverse proxy (Traefik, Caddy)
+# Check services
+docker compose --env-file src/.env -f docker-compose.prod.yml ps
 
-# Update nginx configuration for SSL
-# See docker/web/conf.d/default-ssl.conf
+# View logs
+docker compose --env-file src/.env -f docker-compose.prod.yml logs -f caddy
+docker compose --env-file src/.env -f docker-compose.prod.yml logs -f app
+
+# Update deployment after git pull
+./scripts/deploy-production.sh
 ```
 
 ## 🏗️ Architecture

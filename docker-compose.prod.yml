@@ -1,53 +1,160 @@
 services:
-  app:
-    build:
-      target: production
-    volumes: []  # Remove volume mounts
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-
-  web:
-    restart: unless-stopped
-    volumes:
-      - ./src/public:/var/www/html/public:ro
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-
   db:
+    image: postgres:16-alpine
+    container_name: litradesa_db
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-litradesa}
+      POSTGRES_USER: ${DB_USERNAME:-litradesa_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in src/.env}
+    volumes:
+      - litradesa_db_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    networks:
+      - litradesa_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
+    image: redis:7-alpine
+    container_name: litradesa_redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
+    command:
+      - sh
+      - -c
+      - |
+        if [ -n "$${REDIS_PASSWORD}" ] && [ "$${REDIS_PASSWORD}" != "null" ]; then
+          redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"
+        else
+          redis-server --appendonly yes
+        fi
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
+    volumes:
+      - litradesa_redis_data:/data
+    expose:
+      - "6379"
+    networks:
+      - litradesa_network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          if [ -n "$$REDIS_PASSWORD" ] && [ "$$REDIS_PASSWORD" != "null" ]; then
+            redis-cli -a "$$REDIS_PASSWORD" ping
+          else
+            redis-cli ping
+          fi
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+      target: runtime
+    container_name: litradesa_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    env_file:
+      - ./src/.env
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/app/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - litradesa_network
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    container_name: litradesa_web
+    restart: unless-stopped
+    volumes:
+      - ./src:/var/www/html:ro
+      - ./docker/web/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/web/conf.d:/etc/nginx/conf.d:ro
+    expose:
+      - "80"
+    depends_on:
+      - app
+    networks:
+      - litradesa_network
 
   reverb:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+      target: runtime
+    container_name: litradesa_reverb
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
+    working_dir: /var/www/html
+    env_file:
+      - ./src/.env
+    volumes:
+      - ./src:/var/www/html
+    expose:
+      - "8080"
+    depends_on:
+      - app
+      - redis
+    networks:
+      - litradesa_network
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
 
-  # Remove node service in production (assets pre-built)
+  caddy:
+    image: caddy:2-alpine
+    container_name: litradesa_caddy
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - litradesa_caddy_data:/data
+      - litradesa_caddy_config:/config
+    depends_on:
+      - web
+      - reverb
+    networks:
+      - litradesa_network
+
   node:
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile
+    container_name: litradesa_node
+    working_dir: /var/www/html
+    env_file:
+      - ./src/.env
+    volumes:
+      - ./src:/var/www/html
+      - litradesa_node_modules:/var/www/html/node_modules
     profiles:
-      - development
+      - build
+    command: npm run build
+    networks:
+      - litradesa_network
 
-# Made with Bob
+networks:
+  litradesa_network:
+    driver: bridge
+
+volumes:
+  litradesa_db_data:
+  litradesa_redis_data:
+  litradesa_caddy_data:
+  litradesa_caddy_config:
+  litradesa_node_modules:

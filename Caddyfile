@@ -1,0 +1,14 @@
+{$APP_DOMAIN} {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    @reverb path /app* /apps*
+    reverse_proxy @reverb reverb:8080
+
+    reverse_proxy web:80
+}
