@@ -214,4 +214,27 @@ Route::prefix('softbooks')->name('softbooks.')->middleware(['auth'])->group(func
     });
 });
 
+// Reader Routes (In-App PDF/EPUB Reader)
+Route::prefix('reader')->name('reader.')->middleware(['auth'])->group(function () {
+    // Open reader
+    Route::get('/{softbook}', [App\Http\Controllers\ReaderController::class, 'read'])->name('read');
+    
+    // Secure content delivery
+    Route::get('/{softbook}/content', [App\Http\Controllers\ReaderController::class, 'getContent'])->name('content');
+    
+    // Reading progress
+    Route::post('/{softbook}/progress', [App\Http\Controllers\ReaderController::class, 'updateProgress'])->name('update-progress');
+    Route::get('/{softbook}/progress', [App\Http\Controllers\ReaderController::class, 'getProgress'])->name('get-progress');
+    
+    // Bookmarks
+    Route::post('/{softbook}/bookmarks', [App\Http\Controllers\ReaderController::class, 'createBookmark'])->name('create-bookmark');
+    Route::get('/{softbook}/bookmarks', [App\Http\Controllers\ReaderController::class, 'getBookmarks'])->name('get-bookmarks');
+    Route::patch('/bookmarks/{bookmark}', [App\Http\Controllers\ReaderController::class, 'updateBookmark'])->name('update-bookmark');
+    Route::delete('/bookmarks/{bookmark}', [App\Http\Controllers\ReaderController::class, 'deleteBookmark'])->name('delete-bookmark');
+    
+    // Statistics
+    Route::get('/statistics/user', [App\Http\Controllers\ReaderController::class, 'getStatistics'])->name('statistics');
+    Route::get('/recently-read', [App\Http\Controllers\ReaderController::class, 'getRecentlyRead'])->name('recently-read');
+});
+
 require __DIR__ . '/auth.php';
