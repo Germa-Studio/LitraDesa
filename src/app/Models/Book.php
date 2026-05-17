@@ -121,6 +121,84 @@ class Book extends Model
     }
 
     /**
+     * Get all loans for this book.
+     */
+    public function loans(): HasMany
+    {
+        return $this->hasMany(Loan::class);
+    }
+
+    /**
+     * Get active loans for this book.
+     */
+    public function activeLoans(): HasMany
+    {
+        return $this->hasMany(Loan::class)->whereIn('status', ['active', 'overdue']);
+    }
+
+    /**
+     * Get all reservations for this book.
+     */
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
+    /**
+     * Get active reservations for this book.
+     */
+    public function activeReservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class)->whereIn('status', ['pending', 'ready']);
+    }
+
+    /**
+     * Get pending reservations (waitlist) for this book.
+     */
+    public function waitlist(): HasMany
+    {
+        return $this->hasMany(Reservation::class)
+            ->where('status', 'pending')
+            ->orderBy('reserved_at');
+    }
+
+    /**
+     * Check if book can be reserved (has available copies or can join waitlist).
+     */
+    public function canBeReserved(): bool
+    {
+        return $this->is_available || $this->waitlist()->count() < 10; // Max 10 in waitlist
+    }
+
+    /**
+     * Get next user in waitlist.
+     */
+    public function getNextInWaitlist(): ?Reservation
+    {
+        return $this->waitlist()->first();
+    }
+
+    /**
+     * Check if user already has active reservation for this book.
+     */
+    public function hasActiveReservationFor(int $userId): bool
+    {
+        return $this->activeReservations()
+            ->where('user_id', $userId)
+            ->exists();
+    }
+
+    /**
+     * Check if user already has active loan for this book.
+     */
+    public function hasActiveLoanFor(int $userId): bool
+    {
+        return $this->activeLoans()
+            ->where('user_id', $userId)
+            ->exists();
+    }
+
+    /**
      * Scope a query to only include available books.
      */
     public function scopeAvailable($query)
