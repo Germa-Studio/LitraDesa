@@ -155,4 +155,42 @@ Route::prefix('search')->name('search.')->middleware(['auth'])->group(function (
     Route::get('/popular', [App\Http\Controllers\SearchController::class, 'popular'])->name('popular');
 });
 
+// Loan Management Routes
+Route::prefix('loans')->name('loans.')->middleware(['auth'])->group(function () {
+    // Member can view their own loan history
+    Route::get('/history', [App\Http\Controllers\LoanController::class, 'history'])->name('history');
+    
+    // Admin-only routes
+    Route::middleware(['admin'])->group(function () {
+        Route::get('/', [App\Http\Controllers\LoanController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\LoanController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\LoanController::class, 'store'])->name('store');
+        Route::get('/overdue-report', [App\Http\Controllers\LoanController::class, 'overdueReport'])->name('overdue-report');
+        Route::get('/popular-books', [App\Http\Controllers\LoanController::class, 'popularBooksReport'])->name('popular-books');
+        Route::get('/{loan}', [App\Http\Controllers\LoanController::class, 'show'])->name('show');
+        Route::get('/{loan}/return', [App\Http\Controllers\LoanController::class, 'returnForm'])->name('return-form');
+        Route::post('/return', [App\Http\Controllers\LoanController::class, 'processReturn'])->name('process-return');
+        Route::post('/{loan}/mark-lost', [App\Http\Controllers\LoanController::class, 'markAsLost'])->name('mark-lost');
+        Route::get('/user/{user}/history', [App\Http\Controllers\LoanController::class, 'history'])->name('user-history');
+    });
+});
+
+// Reservation Management Routes
+Route::prefix('reservations')->name('reservations.')->middleware(['auth'])->group(function () {
+    // Member routes
+    Route::get('/', [App\Http\Controllers\ReservationController::class, 'index'])->name('index');
+    Route::get('/create', [App\Http\Controllers\ReservationController::class, 'create'])->name('create');
+    Route::post('/', [App\Http\Controllers\ReservationController::class, 'store'])->name('store');
+    Route::get('/history', [App\Http\Controllers\ReservationController::class, 'history'])->name('history');
+    Route::get('/{reservation}', [App\Http\Controllers\ReservationController::class, 'show'])->name('show');
+    Route::post('/{reservation}/cancel', [App\Http\Controllers\ReservationController::class, 'cancel'])->name('cancel');
+    
+    // Admin-only routes
+    Route::middleware(['admin'])->group(function () {
+        Route::get('/statistics', [App\Http\Controllers\ReservationController::class, 'statistics'])->name('statistics');
+        Route::post('/{reservation}/mark-ready', [App\Http\Controllers\ReservationController::class, 'markAsReady'])->name('mark-ready');
+        Route::post('/process-expired', [App\Http\Controllers\ReservationController::class, 'processExpired'])->name('process-expired');
+    });
+});
+
 require __DIR__ . '/auth.php';

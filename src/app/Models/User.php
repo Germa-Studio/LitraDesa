@@ -79,6 +79,78 @@ class User extends Authenticatable
     }
 
     /**
+     * Get all loans for this user.
+     */
+    public function loans(): HasMany
+    {
+        return $this->hasMany(Loan::class);
+    }
+
+    /**
+     * Get active loans for this user.
+     */
+    public function activeLoans(): HasMany
+    {
+        return $this->hasMany(Loan::class)->whereIn('status', ['active', 'overdue']);
+    }
+
+    /**
+     * Get all reservations for this user.
+     */
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
+    /**
+     * Get active reservations for this user.
+     */
+    public function activeReservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class)->whereIn('status', ['pending', 'ready']);
+    }
+
+    /**
+     * Get loans processed by this admin.
+     */
+    public function processedLoans(): HasMany
+    {
+        return $this->hasMany(Loan::class, 'processed_by');
+    }
+
+    /**
+     * Get returns processed by this admin.
+     */
+    public function processedReturns(): HasMany
+    {
+        return $this->hasMany(Loan::class, 'returned_by');
+    }
+
+    /**
+     * Check if user can borrow more books (max 3 active loans).
+     */
+    public function canBorrowMoreBooks(): bool
+    {
+        return $this->activeLoans()->count() < 3;
+    }
+
+    /**
+     * Get count of active loans.
+     */
+    public function getActiveLoansCountAttribute(): int
+    {
+        return $this->activeLoans()->count();
+    }
+
+    /**
+     * Check if user has overdue loans.
+     */
+    public function hasOverdueLoans(): bool
+    {
+        return $this->loans()->where('status', 'overdue')->exists();
+    }
+
+    /**
      * Check if user is an admin.
      */
     public function isAdmin(): bool
