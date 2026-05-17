@@ -344,9 +344,12 @@ docker-compose restart node
 
 ## 🚢 Production Deployment
 
-Production deployment is supported with a standalone Compose file and Caddy for automatic HTTPS.
+Production deployment is supported in two edge modes:
 
-For Tencent CVM, follow the full guide in [`docs/DEPLOYMENT_TENCENT_CVM.md`](docs/DEPLOYMENT_TENCENT_CVM.md).
+- **Standalone Caddy**: Docker Compose publishes ports `80` and `443`, and Caddy requests HTTPS certificates.
+- **k3s nginx-ingress**: Docker Compose publishes internal backend ports, while nginx-ingress and cert-manager handle public TLS.
+
+For Tencent Lighthouse with k3s nginx-ingress, follow [`docs/DEPLOYMENT_TENCENT_LIGHTHOUSE_K3S.md`](docs/DEPLOYMENT_TENCENT_LIGHTHOUSE_K3S.md).
 
 ### Quick Production Deploy
 
@@ -355,17 +358,37 @@ For Tencent CVM, follow the full guide in [`docs/DEPLOYMENT_TENCENT_CVM.md`](doc
 cp src/.env.production.example src/.env
 nano src/.env
 
-# Deploy with HTTPS
+# Deploy with standalone Caddy HTTPS
 chmod +x scripts/deploy-production.sh
 ./scripts/deploy-production.sh
 ```
+
+### k3s nginx-ingress TLS Deploy
+
+Use this mode when the server already runs the shared `workload-sre` nginx-ingress and cert-manager stack.
+
+```bash
+# Run app services behind ingress. Caddy is not started.
+DEPLOY_EDGE=ingress ./scripts/deploy-production.sh
+
+# Publish LitraDesa through nginx-ingress + cert-manager
+./scripts/deploy-ingress.sh
+```
+
+The ingress manifest uses:
+
+- `ingressClassName: nginx`
+- `cert-manager.io/cluster-issuer: germatech-letsencrypt`
+- TLS secret `litradesa-tls-secret`
+- Web backend port `18080`
+- Reverb backend port `18081`
 
 ### Production Checklist
 
 Before deploying to production:
 
 - [ ] Point a real domain to the server public IP
-- [ ] Open only ports 22, 80, and 443 in the cloud firewall/security group
+- [ ] Open only ports 22, 80, and 443 in the cloud firewall/security group for public traffic
 - [ ] Update `src/.env` with production values
 - [ ] Set `APP_ENV=production` and `APP_DEBUG=false`
 - [ ] Set `APP_URL`, `APP_DOMAIN`, `REVERB_HOST`, and `VITE_REVERB_HOST` to your domain
@@ -400,13 +423,19 @@ VITE_REVERB_SCHEME=https
 ```bash
 # Check services
 docker compose --env-file src/.env -f docker-compose.prod.yml ps
+docker compose --env-file src/.env -f docker-compose.prod.yml -f docker-compose.ingress.yml ps
 
 # View logs
 docker compose --env-file src/.env -f docker-compose.prod.yml logs -f caddy
 docker compose --env-file src/.env -f docker-compose.prod.yml logs -f app
 
+# Check k3s ingress TLS
+kubectl -n litradesa get ingress,certificate,secret
+kubectl -n litradesa describe certificate litradesa-tls-secret
+
 # Update deployment after git pull
 ./scripts/deploy-production.sh
+DEPLOY_EDGE=ingress ./scripts/deploy-production.sh && ./scripts/deploy-ingress.sh
 ```
 
 ## 🏗️ Architecture

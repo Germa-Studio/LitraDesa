@@ -1,0 +1,16 @@
+# Use this override when port 80/443 and TLS are handled by an external
+# ingress controller, such as nginx-ingress in k3s.
+services:
+  web:
+    ports:
+      # Bind this to the k3s node/private IP in production if you do not want
+      # the app exposed on every interface.
+      - "${WEB_HOST_BIND:-0.0.0.0}:${WEB_HOST_PORT:-18080}:80"
+
+  reverb:
+    ports:
+      - "${REVERB_HOST_BIND:-0.0.0.0}:${REVERB_HOST_PORT:-18081}:8080"
+
+  caddy:
+    profiles:
+      - caddy-edge

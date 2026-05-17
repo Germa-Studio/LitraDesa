@@ -5,7 +5,24 @@ set -eu
 PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$PROJECT_ROOT"
 
-COMPOSE="docker compose --env-file src/.env -f docker-compose.prod.yml --profile build"
+DEPLOY_EDGE=${DEPLOY_EDGE:-caddy}
+COMPOSE_FILES="-f docker-compose.prod.yml"
+EDGE_SERVICES="caddy"
+
+case "$DEPLOY_EDGE" in
+    caddy)
+        ;;
+    ingress)
+        COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.ingress.yml"
+        EDGE_SERVICES=""
+        ;;
+    *)
+        echo "Unsupported DEPLOY_EDGE '$DEPLOY_EDGE'. Use 'caddy' or 'ingress'."
+        exit 1
+        ;;
+esac
+
+COMPOSE="docker compose --env-file src/.env $COMPOSE_FILES --profile build"
 
 if [ ! -f src/.env ]; then
     echo "Missing src/.env. Copy src/.env.production.example to src/.env and edit it first."
@@ -59,7 +76,17 @@ until $COMPOSE exec -T db pg_isready -U "${DB_USERNAME:-litradesa_user}" -d "${D
 done
 
 echo "Starting application services..."
-$COMPOSE up -d app web reverb caddy
+if [ "$DEPLOY_EDGE" = "ingress" ]; then
+    docker stop litradesa_caddy >/dev/null 2>&1 || true
+    $COMPOSE stop caddy >/dev/null 2>&1 || true
+fi
+
+$COMPOSE up -d app web reverb $EDGE_SERVICES
+
+if [ "$DEPLOY_EDGE" = "ingress" ]; then
+    docker stop litradesa_caddy >/dev/null 2>&1 || true
+    $COMPOSE stop caddy >/dev/null 2>&1 || true
+fi
 
 echo "Preparing Laravel writable directories..."
 $COMPOSE exec -T app sh -lc 'mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache'
@@ -74,5 +101,9 @@ $COMPOSE exec -T app php artisan config:cache
 $COMPOSE exec -T app php artisan route:cache
 $COMPOSE exec -T app php artisan view:cache
 
-echo "Deployment complete: https://$APP_DOMAIN"
+if [ "$DEPLOY_EDGE" = "ingress" ]; then
+    echo "Deployment complete for external ingress: http://${WEB_HOST_BIND:-0.0.0.0}:${WEB_HOST_PORT:-18080}"
+else
+    echo "Deployment complete: https://$APP_DOMAIN"
+fi
 $COMPOSE ps
