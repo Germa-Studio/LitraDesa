@@ -129,4 +129,30 @@ Route::prefix('book-copies')->name('book-copies.')->middleware(['auth', 'admin']
     Route::delete('/{bookCopy}', [BookCopyController::class, 'destroy'])->name('destroy');
 });
 
+// Book Category Routes
+Route::prefix('categories')->name('categories.')->middleware(['auth'])->group(function () {
+    // Public category browsing
+    Route::get('/', [App\Http\Controllers\BookCategoryController::class, 'index'])->name('index');
+    Route::get('/{category}', [App\Http\Controllers\BookCategoryController::class, 'show'])->name('show');
+    
+    // Admin-only routes
+    Route::middleware(['admin'])->group(function () {
+        Route::get('/create', [App\Http\Controllers\BookCategoryController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\BookCategoryController::class, 'store'])->name('store');
+        Route::get('/{category}/edit', [App\Http\Controllers\BookCategoryController::class, 'edit'])->name('edit');
+        Route::patch('/{category}', [App\Http\Controllers\BookCategoryController::class, 'update'])->name('update');
+        Route::delete('/{category}', [App\Http\Controllers\BookCategoryController::class, 'destroy'])->name('destroy');
+        Route::post('/reorder', [App\Http\Controllers\BookCategoryController::class, 'reorder'])->name('reorder');
+        Route::post('/{category}/toggle-active', [App\Http\Controllers\BookCategoryController::class, 'toggleActive'])->name('toggle-active');
+    });
+});
+
+// Search Routes
+Route::prefix('search')->name('search.')->middleware(['auth'])->group(function () {
+    Route::get('/', [App\Http\Controllers\SearchController::class, 'index'])->name('index');
+    Route::get('/advanced', [App\Http\Controllers\SearchController::class, 'advanced'])->name('advanced');
+    Route::get('/autocomplete', [App\Http\Controllers\SearchController::class, 'autocomplete'])->name('autocomplete');
+    Route::get('/popular', [App\Http\Controllers\SearchController::class, 'popular'])->name('popular');
+});
+
 require __DIR__ . '/auth.php';

@@ -15,16 +15,21 @@ return new class extends Migration
     {
         Schema::create('book_categories', function (Blueprint $table) {
             $table->id();
-            $table->string('name', 100)->unique();
-            $table->string('slug', 100)->unique();
+            $table->foreignId('parent_id')->nullable()->constrained('book_categories')->onDelete('cascade');
+            $table->string('name', 100);
+            $table->string('slug', 100);
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->integer('sort_order')->default(0);
             $table->timestamps();
             $table->softDeletes();
 
             // Indexes
+            $table->index('parent_id');
             $table->index('slug');
             $table->index('is_active');
+            $table->index('sort_order');
+            $table->unique(['parent_id', 'slug']);
         });
     }
 
