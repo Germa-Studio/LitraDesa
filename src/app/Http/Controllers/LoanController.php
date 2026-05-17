@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\LoanStoreRequest;
-use App\Http\Requests\ReturnRequest;
+use App\Http\Requests\StoreLoanRequest;
+use App\Http\Requests\UpdateLoanRequest;
 use App\Models\Book;
 use App\Models\BookCopy;
 use App\Models\Loan;
-use App\Models\Reservation;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,8 +24,10 @@ class LoanController extends Controller
      */
     public function index(Request $request): Response
     {
+        $this->authorize('viewAny', Loan::class);
+
         $query = Loan::with(['user', 'book', 'bookCopy', 'processedBy'])
-            ->latest();
+            ->latest('loan_date');
 
         // Filter by status
         if ($request->filled('status')) {
@@ -35,7 +38,7 @@ class LoanController extends Controller
             }
         }
 
-        // Filter by user
+        // Filter by member
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
@@ -50,26 +53,25 @@ class LoanController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->whereHas('user', function ($userQuery) use ($search) {
-                    $userQuery->where('name', 'ILIKE', "%{$search}%");
+                    $userQuery->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
                 })
                 ->orWhereHas('book', function ($bookQuery) use ($search) {
-                    $bookQuery->where('title', 'ILIKE', "%{$search}%");
+                    $bookQuery->where('title', 'like', "%{$search}%");
                 });
             });
         }
 
-        $loans = $query->paginate(20)->withQueryString();
+        $loans = $query->paginate(15)->withQueryString();
 
         // Get statistics
         $stats = [
-            'active' => Loan::active()->count(),
+            'active' => Loan::where('status', 'active')->count(),
             'overdue' => Loan::overdue()->count(),
-            'returned_today' => Loan::returned()
+            'returned_today' => Loan::where('status', 'returned')
                 ->whereDate('return_date', today())
                 ->count(),
-            'due_today' => Loan::active()
-                ->whereDate('due_date', today())
-                ->count(),
+            'due_soon' => Loan::dueWithin(3)->count(),
         ];
 
         return Inertia::render('Loans/Index', [
@@ -82,106 +84,98 @@ class LoanController extends Controller
     /**
      * Show the form for creating a new loan.
      */
-    public function create(Request $request): Response
+    public function create(): Response
     {
+        $this->authorize('create', Loan::class);
+
         // Get active members
-        $members = User::members()
-            ->active()
+        $members = User::where('role', 'member')
+            ->where('status', 'active')
+            ->select('id', 'name', 'email', 'member_id')
             ->orderBy('name')
-            ->get()
-            ->map(function ($member) {
-                return [
-                    'id' => $member->id,
-                    'name' => $member->name,
-                    'email' => $member->email,
-                    'active_loans_count' => $member->active_loans_count,
-                    'can_borrow' => $member->canBorrowMoreBooks(),
-                ];
-            });
+            ->get();
 
-        // Get available books
-        $books = Book::with('category')
-            ->available()
-            ->orderBy('title')
-            ->get()
-            ->map(function ($book) {
-                return [
-                    'id' => $book->id,
-                    'title' => $book->title,
-                    'author' => $book->author,
-                    'category' => $book->category->name ?? null,
-                    'available_copies' => $book->available_copies,
-                ];
-            });
-
-        // If reservation_id is provided, get reservation details
-        $reservation = null;
-        if ($request->filled('reservation_id')) {
-            $reservation = Reservation::with(['user', 'book'])
-                ->find($request->reservation_id);
-        }
+        // Get available books with available copies
+        $books = Book::whereHas('bookCopies', function ($query) {
+            $query->where('status', 'available');
+        })
+        ->with(['bookCopies' => function ($query) {
+            $query->where('status', 'available');
+        }])
+        ->select('id', 'title', 'author', 'isbn')
+        ->orderBy('title')
+        ->get();
 
         return Inertia::render('Loans/Create', [
             'members' => $members,
             'books' => $books,
-            'reservation' => $reservation,
         ]);
     }
 
     /**
-     * Store a newly created loan.
+     * Store a newly created loan in storage.
      */
-    public function store(LoanStoreRequest $request): RedirectResponse
+    public function store(StoreLoanRequest $request): RedirectResponse
     {
-        $validated = $request->validated();
-        
-        // Get or create book copy
-        $bookCopy = null;
-        if ($validated['book_copy_id'] ?? null) {
-            $bookCopy = BookCopy::find($validated['book_copy_id']);
-        } else {
-            // Auto-select first available copy
-            $bookCopy = BookCopy::where('book_id', $validated['book_id'])
-                ->where('status', 'available')
-                ->first();
+        try {
+            DB::beginTransaction();
+
+            $validated = $request->validated();
+
+            // Get book copy and book
+            $bookCopy = BookCopy::findOrFail($validated['book_copy_id']);
+            $book = $bookCopy->book;
+
+            // Create loan
+            $loan = Loan::create([
+                'user_id' => $validated['user_id'],
+                'book_id' => $book->id,
+                'book_copy_id' => $bookCopy->id,
+                'reservation_id' => $validated['reservation_id'] ?? null,
+                'processed_by' => auth()->id(),
+                'status' => 'active',
+                'loan_date' => $validated['loan_date'] ?? now()->toDateString(),
+                'due_date' => $validated['due_date'] ?? now()->addDays(14)->toDateString(),
+                'notes' => $validated['notes'] ?? null,
+                'book_condition_at_loan' => $validated['book_condition_at_loan'] ?? 'good',
+            ]);
+
+            // Update book copy status
+            $bookCopy->update(['status' => 'borrowed']);
+
+            // Update book available copies count
+            $book->syncAvailableCopies();
+
+            // If loan is from reservation, mark reservation as fulfilled
+            if ($loan->reservation_id) {
+                $loan->reservation->update(['status' => 'fulfilled']);
+            }
+
+            DB::commit();
+
+            Log::info('Loan created', [
+                'loan_id' => $loan->id,
+                'user_id' => $loan->user_id,
+                'book_id' => $loan->book_id,
+                'processed_by' => auth()->id(),
+            ]);
+
+            return redirect()->route('loans.show', $loan)
+                ->with('success', 'Peminjaman berhasil dibuat.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Failed to create loan', [
+                'error' => $e->getMessage(),
+                'user_id' => $request->user_id,
+                'book_copy_id' => $request->book_copy_id,
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal membuat peminjaman. Silakan coba lagi.');
         }
-
-        if (!$bookCopy) {
-            return back()->with('error', 'Tidak ada salinan buku yang tersedia.');
-        }
-
-        // Create loan
-        $loan = Loan::create([
-            'user_id' => $validated['user_id'],
-            'book_id' => $validated['book_id'],
-            'book_copy_id' => $bookCopy->id,
-            'reservation_id' => $validated['reservation_id'] ?? null,
-            'processed_by' => auth()->id(),
-            'loan_date' => $validated['loan_date'],
-            'due_date' => $validated['due_date'],
-            'notes' => $validated['notes'] ?? null,
-            'book_condition_at_loan' => $validated['book_condition_at_loan'],
-            'status' => 'active',
-        ]);
-
-        // Update book copy status
-        $bookCopy->update(['status' => 'borrowed']);
-
-        // Update book availability
-        $loan->book->syncAvailableCopies();
-
-        // If this was from a reservation, mark it as completed
-        if ($loan->reservation_id) {
-            $reservation = Reservation::find($loan->reservation_id);
-            $reservation?->markAsCompleted();
-        }
-
-        // Check if there's a waitlist and notify next person
-        $this->notifyNextInWaitlist($loan->book);
-
-        return redirect()
-            ->route('loans.index')
-            ->with('success', "Peminjaman berhasil dicatat untuk {$loan->user->name}.");
     }
 
     /**
@@ -189,13 +183,15 @@ class LoanController extends Controller
      */
     public function show(Loan $loan): Response
     {
+        $this->authorize('view', $loan);
+
         $loan->load([
             'user',
             'book.category',
             'bookCopy',
-            'reservation',
             'processedBy',
             'returnedBy',
+            'reservation',
         ]);
 
         return Inertia::render('Loans/Show', [
@@ -204,148 +200,210 @@ class LoanController extends Controller
     }
 
     /**
-     * Show the form for processing a return.
+     * Show the form for editing the specified loan.
      */
-    public function returnForm(Loan $loan): Response
+    public function edit(Loan $loan): Response
     {
+        $this->authorize('update', $loan);
+
         $loan->load(['user', 'book', 'bookCopy']);
 
-        return Inertia::render('Loans/Return', [
+        return Inertia::render('Loans/Edit', [
             'loan' => $loan,
-            'overdue_days' => $loan->calculateOverdueDays(),
-            'fine_amount' => $loan->calculateFine(),
         ]);
     }
 
     /**
-     * Process the return of a book.
+     * Update the specified loan in storage.
      */
-    public function processReturn(ReturnRequest $request): RedirectResponse
+    public function update(UpdateLoanRequest $request, Loan $loan): RedirectResponse
     {
-        $validated = $request->validated();
-        $loan = Loan::findOrFail($validated['loan_id']);
+        try {
+            DB::beginTransaction();
 
+            $validated = $request->validated();
+            $action = $validated['action'];
+
+            switch ($action) {
+                case 'return':
+                    $this->processReturn($loan, $validated);
+                    $message = 'Buku berhasil dikembalikan.';
+                    break;
+
+                case 'mark_lost':
+                    $this->processLost($loan, $validated);
+                    $message = 'Buku berhasil ditandai sebagai hilang.';
+                    break;
+
+                case 'extend':
+                    $this->processExtension($loan, $validated);
+                    $message = 'Peminjaman berhasil diperpanjang.';
+                    break;
+
+                default:
+                    throw new \InvalidArgumentException('Invalid action');
+            }
+
+            DB::commit();
+
+            Log::info('Loan updated', [
+                'loan_id' => $loan->id,
+                'action' => $action,
+                'processed_by' => auth()->id(),
+            ]);
+
+            return redirect()->route('loans.show', $loan)
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Failed to update loan', [
+                'loan_id' => $loan->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()
+                ->with('error', 'Gagal memperbarui peminjaman. Silakan coba lagi.');
+        }
+    }
+
+    /**
+     * Process book return.
+     */
+    private function processReturn(Loan $loan, array $data): void
+    {
         $loan->processReturn(
             auth()->user(),
-            $validated['book_condition_at_return'],
-            $validated['return_notes'] ?? null
+            $data['book_condition_at_return'] ?? 'good',
+            $data['return_notes'] ?? null
         );
 
-        // Check if there's a waitlist and notify next person
-        $this->notifyNextInWaitlist($loan->book);
+        // Update fine paid status if provided
+        if (isset($data['fine_paid'])) {
+            $loan->update(['fine_paid' => $data['fine_paid']]);
+        }
+    }
 
-        $message = "Pengembalian berhasil dicatat untuk {$loan->user->name}.";
-        
-        if ($loan->days_overdue > 0) {
-            $message .= " Terlambat {$loan->days_overdue} hari. Denda: Rp " . number_format($loan->fine_amount, 0, ',', '.');
+    /**
+     * Process book lost.
+     */
+    private function processLost(Loan $loan, array $data): void
+    {
+        $loan->markAsLost(
+            auth()->user(),
+            $data['return_notes'] ?? null
+        );
+    }
+
+    /**
+     * Process loan extension.
+     */
+    private function processExtension(Loan $loan, array $data): void
+    {
+        if ($loan->status !== 'active') {
+            throw new \InvalidArgumentException('Only active loans can be extended');
         }
 
-        return redirect()
-            ->route('loans.index')
-            ->with('success', $message);
-    }
+        $extendDays = $data['extend_days'] ?? 7;
+        $newDueDate = now()->parse($loan->due_date)->addDays($extendDays);
 
-    /**
-     * Mark a book as lost.
-     */
-    public function markAsLost(Request $request, Loan $loan): RedirectResponse
-    {
-        $request->validate([
-            'notes' => 'nullable|string|max:1000',
-        ]);
-
-        $loan->markAsLost(auth()->user(), $request->notes);
-
-        return redirect()
-            ->route('loans.index')
-            ->with('success', "Buku ditandai sebagai hilang untuk peminjaman {$loan->user->name}.");
-    }
-
-    /**
-     * Get loan history for a user.
-     */
-    public function history(Request $request, User $user): Response
-    {
-        $loans = Loan::with(['book', 'processedBy', 'returnedBy'])
-            ->where('user_id', $user->id)
-            ->latest()
-            ->paginate(20);
-
-        return Inertia::render('Loans/History', [
-            'user' => $user,
-            'loans' => $loans,
+        $loan->update([
+            'due_date' => $newDueDate->toDateString(),
+            'notes' => ($loan->notes ?? '') . "\nDiperpanjang {$extendDays} hari pada " . now()->format('d/m/Y'),
         ]);
     }
 
     /**
-     * Get overdue loans report.
+     * Remove the specified loan from storage.
      */
-    public function overdueReport(): Response
+    public function destroy(Loan $loan): RedirectResponse
     {
-        $overdueLoans = Loan::with(['user', 'book'])
-            ->overdue()
-            ->orderBy('due_date')
-            ->get()
-            ->map(function ($loan) {
-                return [
-                    'id' => $loan->id,
-                    'user' => $loan->user->name,
-                    'book' => $loan->book->title,
-                    'due_date' => $loan->due_date->format('d/m/Y'),
-                    'days_overdue' => $loan->calculateOverdueDays(),
-                    'fine_amount' => $loan->calculateFine(),
-                ];
-            });
+        $this->authorize('delete', $loan);
 
-        $totalFines = $overdueLoans->sum('fine_amount');
-
-        return Inertia::render('Loans/OverdueReport', [
-            'overdueLoans' => $overdueLoans,
-            'totalFines' => $totalFines,
-        ]);
-    }
-
-    /**
-     * Get popular books report.
-     */
-    public function popularBooksReport(): Response
-    {
-        $popularBooks = Book::withCount(['loans' => function ($query) {
-            $query->where('created_at', '>=', now()->subMonths(3));
-        }])
-            ->having('loans_count', '>', 0)
-            ->orderBy('loans_count', 'desc')
-            ->limit(20)
-            ->get()
-            ->map(function ($book) {
-                return [
-                    'id' => $book->id,
-                    'title' => $book->title,
-                    'author' => $book->author,
-                    'loans_count' => $book->loans_count,
-                    'category' => $book->category->name ?? null,
-                ];
-            });
-
-        return Inertia::render('Loans/PopularBooksReport', [
-            'popularBooks' => $popularBooks,
-        ]);
-    }
-
-    /**
-     * Notify next person in waitlist when book becomes available.
-     */
-    private function notifyNextInWaitlist(Book $book): void
-    {
-        if ($book->is_available && $book->available_copies > 0) {
-            $nextReservation = $book->getNextInWaitlist();
-            
-            if ($nextReservation) {
-                $nextReservation->markAsReady();
-                
-                // TODO: Send notification to user (email/WhatsApp)
-                // This will be implemented in Phase 2 with WhatsApp integration
+        try {
+            // Only allow deletion of returned loans
+            if ($loan->status !== 'returned') {
+                return back()->with('error', 'Hanya peminjaman yang sudah dikembalikan yang dapat dihapus.');
             }
+
+            $loan->delete();
+
+            Log::info('Loan deleted', [
+                'loan_id' => $loan->id,
+                'deleted_by' => auth()->id(),
+            ]);
+
+            return redirect()->route('loans.index')
+                ->with('success', 'Peminjaman berhasil dihapus.');
+
+        } catch (\Exception $e) {
+            Log::error('Failed to delete loan', [
+                'loan_id' => $loan->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Gagal menghapus peminjaman. Silakan coba lagi.');
         }
+    }
+
+    /**
+     * Get member's loan history.
+     */
+    public function memberHistory(User $user): Response
+    {
+        $this->authorize('viewAny', Loan::class);
+
+        $loans = Loan::with(['book', 'bookCopy', 'processedBy'])
+            ->where('user_id', $user->id)
+            ->latest('loan_date')
+            ->paginate(15);
+
+        $stats = [
+            'total_loans' => Loan::where('user_id', $user->id)->count(),
+            'active_loans' => Loan::where('user_id', $user->id)->where('status', 'active')->count(),
+            'overdue_loans' => Loan::where('user_id', $user->id)->overdue()->count(),
+            'total_fines' => Loan::where('user_id', $user->id)
+                ->where('fine_amount', '>', 0)
+                ->sum('fine_amount'),
+            'unpaid_fines' => Loan::where('user_id', $user->id)
+                ->where('fine_amount', '>', 0)
+                ->where('fine_paid', false)
+                ->sum('fine_amount'),
+        ];
+
+        return Inertia::render('Loans/MemberHistory', [
+            'member' => $user,
+            'loans' => $loans,
+            'stats' => $stats,
+        ]);
+    }
+
+    /**
+     * Get book's loan history.
+     */
+    public function bookHistory(Book $book): Response
+    {
+        $this->authorize('viewAny', Loan::class);
+
+        $loans = Loan::with(['user', 'bookCopy', 'processedBy'])
+            ->where('book_id', $book->id)
+            ->latest('loan_date')
+            ->paginate(15);
+
+        $stats = [
+            'total_loans' => Loan::where('book_id', $book->id)->count(),
+            'active_loans' => Loan::where('book_id', $book->id)->where('status', 'active')->count(),
+            'average_loan_duration' => Loan::where('book_id', $book->id)
+                ->where('status', 'returned')
+                ->selectRaw('AVG(DATEDIFF(return_date, loan_date)) as avg_duration')
+                ->value('avg_duration'),
+        ];
+
+        return Inertia::render('Loans/BookHistory', [
+            'book' => $book->load('category'),
+            'loans' => $loans,
+            'stats' => $stats,
+        ]);
     }
 }

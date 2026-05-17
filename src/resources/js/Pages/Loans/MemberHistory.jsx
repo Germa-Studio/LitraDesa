@@ -1,20 +1,19 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, Link } from '@inertiajs/react';
 
-export default function Index({ auth, loans, stats, filters }) {
-    const [search, setSearch] = useState(filters.search || '');
-    const [status, setStatus] = useState(filters.status || '');
-
-    const handleSearch = (e) => {
-        e.preventDefault();
-        router.get(route('loans.index'), { search, status }, { preserveState: true });
+export default function MemberHistory({ auth, member, loans, stats }) {
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
-    const handleReset = () => {
-        setSearch('');
-        setStatus('');
-        router.get(route('loans.index'));
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+        }).format(amount);
     };
 
     const getStatusBadge = (loan) => {
@@ -33,119 +32,86 @@ export default function Index({ auth, loans, stats, filters }) {
         );
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return '-';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-    };
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0,
-        }).format(amount);
-    };
-
     return (
         <AuthenticatedLayout
             user={auth.user}
             header={
                 <div className="flex justify-between items-center">
                     <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                        Manajemen Peminjaman
+                        Riwayat Peminjaman - {member.name}
                     </h2>
                     <Link
-                        href={route('loans.create')}
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                        href={route('loans.index')}
+                        className="text-gray-600 hover:text-gray-900"
                     >
-                        + Tambah Peminjaman
+                        ← Kembali
                     </Link>
                 </div>
             }
         >
-            <Head title="Manajemen Peminjaman" />
+            <Head title={`Riwayat Peminjaman - ${member.name}`} />
 
             <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    {/* Statistics Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+                    {/* Member Info */}
+                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div className="p-6">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">{member.name}</h3>
+                                    <p className="text-sm text-gray-600 mt-1">ID Member: {member.member_id}</p>
+                                    <p className="text-sm text-gray-600">Email: {member.email}</p>
+                                </div>
+                                <Link
+                                    href={route('members.show', member.id)}
+                                    className="text-blue-600 hover:text-blue-800 text-sm"
+                                >
+                                    Lihat Profil →
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Statistics */}
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                            <div className="text-sm text-gray-600">Peminjaman Aktif</div>
-                            <div className="text-3xl font-bold text-blue-600">{stats.active}</div>
+                            <div className="text-sm text-gray-600">Total Peminjaman</div>
+                            <div className="text-3xl font-bold text-gray-900">{stats.total_loans}</div>
+                        </div>
+                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                            <div className="text-sm text-gray-600">Aktif</div>
+                            <div className="text-3xl font-bold text-blue-600">{stats.active_loans}</div>
                         </div>
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                             <div className="text-sm text-gray-600">Terlambat</div>
-                            <div className="text-3xl font-bold text-red-600">{stats.overdue}</div>
+                            <div className="text-3xl font-bold text-red-600">{stats.overdue_loans}</div>
                         </div>
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                            <div className="text-sm text-gray-600">Dikembalikan Hari Ini</div>
-                            <div className="text-3xl font-bold text-green-600">{stats.returned_today}</div>
+                            <div className="text-sm text-gray-600">Total Denda</div>
+                            <div className="text-xl font-bold text-gray-900">{formatCurrency(stats.total_fines)}</div>
                         </div>
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                            <div className="text-sm text-gray-600">Jatuh Tempo 3 Hari</div>
-                            <div className="text-3xl font-bold text-yellow-600">{stats.due_soon}</div>
+                            <div className="text-sm text-gray-600">Denda Belum Lunas</div>
+                            <div className="text-xl font-bold text-red-600">{formatCurrency(stats.unpaid_fines)}</div>
                         </div>
                     </div>
 
-                    {/* Search and Filter */}
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                        <div className="p-6">
-                            <form onSubmit={handleSearch} className="flex gap-4">
-                                <div className="flex-1">
-                                    <input
-                                        type="text"
-                                        value={search}
-                                        onChange={(e) => setSearch(e.target.value)}
-                                        placeholder="Cari member atau buku..."
-                                        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm"
-                                    />
-                                </div>
-                                <div className="w-48">
-                                    <select
-                                        value={status}
-                                        onChange={(e) => setStatus(e.target.value)}
-                                        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm"
-                                    >
-                                        <option value="">Semua Status</option>
-                                        <option value="active">Aktif</option>
-                                        <option value="overdue">Terlambat</option>
-                                        <option value="returned">Dikembalikan</option>
-                                        <option value="lost">Hilang</option>
-                                    </select>
-                                </div>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                                >
-                                    Cari
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleReset}
-                                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-                                >
-                                    Reset
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-
-                    {/* Loans Table */}
+                    {/* Loans History */}
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                Riwayat Peminjaman
+                            </h3>
+
                             {loans.data.length === 0 ? (
                                 <div className="text-center py-12">
-                                    <p className="text-gray-500">Tidak ada data peminjaman.</p>
+                                    <p className="text-gray-500">Belum ada riwayat peminjaman.</p>
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-50">
                                             <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Member
-                                                </th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Buku
                                                 </th>
@@ -154,6 +120,9 @@ export default function Index({ auth, loans, stats, filters }) {
                                                 </th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Jatuh Tempo
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Tanggal Kembali
                                                 </th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Status
@@ -169,14 +138,6 @@ export default function Index({ auth, loans, stats, filters }) {
                                         <tbody className="bg-white divide-y divide-gray-200">
                                             {loans.data.map((loan) => (
                                                 <tr key={loan.id} className="hover:bg-gray-50">
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm font-medium text-gray-900">
-                                                            {loan.user.name}
-                                                        </div>
-                                                        <div className="text-sm text-gray-500">
-                                                            {loan.user.member_id}
-                                                        </div>
-                                                    </td>
                                                     <td className="px-6 py-4">
                                                         <div className="text-sm font-medium text-gray-900">
                                                             {loan.book.title}
@@ -188,15 +149,11 @@ export default function Index({ auth, loans, stats, filters }) {
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                         {formatDate(loan.loan_date)}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm text-gray-900">
-                                                            {formatDate(loan.due_date)}
-                                                        </div>
-                                                        {loan.days_overdue > 0 && (
-                                                            <div className="text-xs text-red-600">
-                                                                Terlambat {loan.days_overdue} hari
-                                                            </div>
-                                                        )}
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {formatDate(loan.due_date)}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {formatDate(loan.return_date)}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         {getStatusBadge(loan)}
@@ -222,18 +179,10 @@ export default function Index({ auth, loans, stats, filters }) {
                                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                         <Link
                                                             href={route('loans.show', loan.id)}
-                                                            className="text-blue-600 hover:text-blue-900 mr-3"
+                                                            className="text-blue-600 hover:text-blue-900"
                                                         >
                                                             Detail
                                                         </Link>
-                                                        {(loan.status === 'active' || loan.status === 'overdue') && (
-                                                            <Link
-                                                                href={route('loans.edit', loan.id)}
-                                                                className="text-green-600 hover:text-green-900"
-                                                            >
-                                                                Proses
-                                                            </Link>
-                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
