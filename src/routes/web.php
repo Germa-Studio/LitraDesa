@@ -191,4 +191,27 @@ Route::prefix('reservations')->name('reservations.')->middleware(['auth'])->grou
     });
 });
 
+// Softbook Management Routes
+Route::prefix('softbooks')->name('softbooks.')->middleware(['auth'])->group(function () {
+    // Public softbook browsing
+    Route::get('/', [App\Http\Controllers\SoftbookController::class, 'index'])->name('index');
+    Route::get('/{softbook}', [App\Http\Controllers\SoftbookController::class, 'show'])->name('show');
+    
+    // Member download routes
+    Route::post('/{softbook}/generate-token', [App\Http\Controllers\SoftbookController::class, 'generateDownloadToken'])->name('generate-token');
+    Route::get('/download/{token}', [App\Http\Controllers\SoftbookController::class, 'download'])->name('download');
+    Route::get('/my-downloads', [App\Http\Controllers\SoftbookController::class, 'myDownloads'])->name('my-downloads');
+
+    // Admin-only routes
+    Route::middleware(['admin'])->group(function () {
+        Route::get('/create', [App\Http\Controllers\SoftbookController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\SoftbookController::class, 'store'])->name('store');
+        Route::get('/{softbook}/edit', [App\Http\Controllers\SoftbookController::class, 'edit'])->name('edit');
+        Route::patch('/{softbook}', [App\Http\Controllers\SoftbookController::class, 'update'])->name('update');
+        Route::delete('/{softbook}', [App\Http\Controllers\SoftbookController::class, 'destroy'])->name('destroy');
+        Route::post('/{softbook}/toggle-active', [App\Http\Controllers\SoftbookController::class, 'toggleActive'])->name('toggle-active');
+        Route::get('/{softbook}/download-history', [App\Http\Controllers\SoftbookController::class, 'downloadHistory'])->name('download-history');
+    });
+});
+
 require __DIR__ . '/auth.php';
