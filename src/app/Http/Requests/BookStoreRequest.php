@@ -13,7 +13,7 @@ class BookStoreRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()->is_admin ?? false;
+        return $this->user()->isAdmin();
     }
 
     /**

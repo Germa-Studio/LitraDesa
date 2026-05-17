@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BookCategoryController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\BookCopyController;
 use App\Http\Controllers\MemberController;
@@ -89,6 +90,17 @@ Route::prefix('members')->name('members.')->group(function () {
         Route::post('/{member}/reactivate', [MemberController::class, 'reactivate'])->name('reactivate');
         Route::delete('/{member}', [MemberController::class, 'destroy'])->name('destroy');
     });
+});
+
+// Book Category Management Routes (Admin only)
+Route::prefix('book-categories')->name('book-categories.')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('/', [BookCategoryController::class, 'index'])->name('index');
+    Route::get('/create', [BookCategoryController::class, 'create'])->name('create');
+    Route::post('/', [BookCategoryController::class, 'store'])->name('store');
+    Route::get('/{bookCategory}', [BookCategoryController::class, 'show'])->name('show');
+    Route::get('/{bookCategory}/edit', [BookCategoryController::class, 'edit'])->name('edit');
+    Route::patch('/{bookCategory}', [BookCategoryController::class, 'update'])->name('update');
+    Route::delete('/{bookCategory}', [BookCategoryController::class, 'destroy'])->name('destroy');
 });
 
 // Book Management Routes

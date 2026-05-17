@@ -41,6 +41,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                             Katalog Buku
                                         </NavLink>
                                         <NavLink
+                                            href={route('book-categories.index')}
+                                            active={route().current('book-categories.*')}
+                                        >
+                                            Kategori Buku
+                                        </NavLink>
+                                        <NavLink
                                             href={route('members.index')}
                                             active={route().current('members.index')}
                                         >
@@ -175,6 +181,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                     active={route().current('books.*')}
                                 >
                                     Katalog Buku
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route('book-categories.index')}
+                                    active={route().current('book-categories.*')}
+                                >
+                                    Kategori Buku
                                 </ResponsiveNavLink>
                                 <ResponsiveNavLink
                                     href={route('members.index')}
