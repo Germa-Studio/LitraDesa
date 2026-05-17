@@ -1,13 +1,13 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
-import Dropdown from '@/Components/Dropdown';
-import NavLink from '@/Components/NavLink';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import ApplicationLogo from "@/Components/ApplicationLogo";
+import Dropdown from "@/Components/Dropdown";
+import NavLink from "@/Components/NavLink";
+import ResponsiveNavLink from "@/Components/ResponsiveNavLink";
+import { Link, usePage } from "@inertiajs/react";
+import { useState } from "react";
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = user?.role === "admin";
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
@@ -26,8 +26,8 @@ export default function AuthenticatedLayout({ header, children }) {
 
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
+                                    href={route("dashboard")}
+                                    active={route().current("dashboard")}
                                 >
                                     Dashboard
                                 </NavLink>
@@ -35,20 +35,32 @@ export default function AuthenticatedLayout({ header, children }) {
                                 {isAdmin ? (
                                     <>
                                         <NavLink
-                                            href={route('books.index')}
-                                            active={route().current('books.*')}
+                                            href={route("books.index")}
+                                            active={route().current("books.*")}
                                         >
                                             Katalog Buku
                                         </NavLink>
                                         <NavLink
-                                            href={route('members.index')}
-                                            active={route().current('members.index')}
+                                            href={route("categories.index")}
+                                            active={route().current(
+                                                "categories.*",
+                                            )}
+                                        >
+                                            Kategori Buku
+                                        </NavLink>
+                                        <NavLink
+                                            href={route("members.index")}
+                                            active={route().current(
+                                                "members.index",
+                                            )}
                                         >
                                             Anggota
                                         </NavLink>
                                         <NavLink
-                                            href={route('members.pending')}
-                                            active={route().current('members.pending')}
+                                            href={route("members.pending")}
+                                            active={route().current(
+                                                "members.pending",
+                                            )}
                                         >
                                             Pendaftar Baru
                                         </NavLink>
@@ -56,8 +68,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                 ) : (
                                     user?.id && (
                                         <NavLink
-                                            href={route('members.show', user.id)}
-                                            active={route().current('members.show')}
+                                            href={route(
+                                                "members.show",
+                                                user.id,
+                                            )}
+                                            active={route().current(
+                                                "members.show",
+                                            )}
                                         >
                                             Profil Saya
                                         </NavLink>
@@ -95,12 +112,12 @@ export default function AuthenticatedLayout({ header, children }) {
 
                                     <Dropdown.Content>
                                         <Dropdown.Link
-                                            href={route('profile.edit')}
+                                            href={route("profile.edit")}
                                         >
                                             Profile
                                         </Dropdown.Link>
                                         <Dropdown.Link
-                                            href={route('logout')}
+                                            href={route("logout")}
                                             method="post"
                                             as="button"
                                         >
@@ -129,8 +146,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <path
                                         className={
                                             !showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
+                                                ? "inline-flex"
+                                                : "hidden"
                                         }
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -140,8 +157,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <path
                                         className={
                                             showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
+                                                ? "inline-flex"
+                                                : "hidden"
                                         }
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -156,14 +173,14 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 <div
                     className={
-                        (showingNavigationDropdown ? 'block' : 'hidden') +
-                        ' sm:hidden'
+                        (showingNavigationDropdown ? "block" : "hidden") +
+                        " sm:hidden"
                     }
                 >
                     <div className="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
+                            href={route("dashboard")}
+                            active={route().current("dashboard")}
                         >
                             Dashboard
                         </ResponsiveNavLink>
@@ -171,20 +188,26 @@ export default function AuthenticatedLayout({ header, children }) {
                         {isAdmin ? (
                             <>
                                 <ResponsiveNavLink
-                                    href={route('books.index')}
-                                    active={route().current('books.*')}
+                                    href={route("books.index")}
+                                    active={route().current("books.*")}
                                 >
                                     Katalog Buku
                                 </ResponsiveNavLink>
                                 <ResponsiveNavLink
-                                    href={route('members.index')}
-                                    active={route().current('members.index')}
+                                    href={route("categories.index")}
+                                    active={route().current("categories.*")}
+                                >
+                                    Kategori
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route("members.index")}
+                                    active={route().current("members.index")}
                                 >
                                     Anggota
                                 </ResponsiveNavLink>
                                 <ResponsiveNavLink
-                                    href={route('members.pending')}
-                                    active={route().current('members.pending')}
+                                    href={route("members.pending")}
+                                    active={route().current("members.pending")}
                                 >
                                     Pendaftar Baru
                                 </ResponsiveNavLink>
@@ -192,8 +215,8 @@ export default function AuthenticatedLayout({ header, children }) {
                         ) : (
                             user?.id && (
                                 <ResponsiveNavLink
-                                    href={route('members.show', user.id)}
-                                    active={route().current('members.show')}
+                                    href={route("members.show", user.id)}
+                                    active={route().current("members.show")}
                                 >
                                     Profil Saya
                                 </ResponsiveNavLink>
@@ -212,12 +235,12 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
 
                         <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
+                            <ResponsiveNavLink href={route("profile.edit")}>
                                 Profile
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 method="post"
-                                href={route('logout')}
+                                href={route("logout")}
                                 as="button"
                             >
                                 Log Out

@@ -102,17 +102,17 @@ Route::prefix('books')->name('books.')->middleware(['auth'])->group(function () 
         Route::post('/', [BookController::class, 'store'])->name('store');
         Route::post('/bulk-import', [BookController::class, 'bulkImport'])->name('bulk-import');
     });
-    
+
     // Wildcard routes (must come after specific routes)
     Route::get('/{book}', [BookController::class, 'show'])->name('show');
-    
+
     // Admin-only wildcard routes
     Route::middleware(['admin'])->group(function () {
         Route::get('/{book}/edit', [BookController::class, 'edit'])->name('edit');
         Route::patch('/{book}', [BookController::class, 'update'])->name('update');
         Route::delete('/{book}', [BookController::class, 'destroy'])->name('destroy');
         Route::get('/{book}/qr-code', [BookController::class, 'downloadQrCode'])->name('qr-code');
-        
+
         // Book Copy Management Routes
         Route::post('/{book}/copies', [BookCopyController::class, 'store'])->name('copies.store');
         Route::get('/{book}/copies/qr-codes', [BookCopyController::class, 'downloadAllQrCodes'])->name('copies.qr-codes');
@@ -133,18 +133,20 @@ Route::prefix('book-copies')->name('book-copies.')->middleware(['auth', 'admin']
 Route::prefix('categories')->name('categories.')->middleware(['auth'])->group(function () {
     // Public category browsing
     Route::get('/', [App\Http\Controllers\BookCategoryController::class, 'index'])->name('index');
-    Route::get('/{category}', [App\Http\Controllers\BookCategoryController::class, 'show'])->name('show');
-    
-    // Admin-only routes
+
+    // Admin-only routes (must come before wildcard routes)
     Route::middleware(['admin'])->group(function () {
         Route::get('/create', [App\Http\Controllers\BookCategoryController::class, 'create'])->name('create');
         Route::post('/', [App\Http\Controllers\BookCategoryController::class, 'store'])->name('store');
+        Route::post('/reorder', [App\Http\Controllers\BookCategoryController::class, 'reorder'])->name('reorder');
         Route::get('/{category}/edit', [App\Http\Controllers\BookCategoryController::class, 'edit'])->name('edit');
         Route::patch('/{category}', [App\Http\Controllers\BookCategoryController::class, 'update'])->name('update');
         Route::delete('/{category}', [App\Http\Controllers\BookCategoryController::class, 'destroy'])->name('destroy');
-        Route::post('/reorder', [App\Http\Controllers\BookCategoryController::class, 'reorder'])->name('reorder');
         Route::post('/{category}/toggle-active', [App\Http\Controllers\BookCategoryController::class, 'toggleActive'])->name('toggle-active');
     });
+
+    // Wildcard routes (must come last)
+    Route::get('/{category}', [App\Http\Controllers\BookCategoryController::class, 'show'])->name('show');
 });
 
 // Search Routes
@@ -159,7 +161,7 @@ Route::prefix('search')->name('search.')->middleware(['auth'])->group(function (
 Route::prefix('loans')->name('loans.')->middleware(['auth'])->group(function () {
     // Member can view their own loan history
     Route::get('/history', [App\Http\Controllers\LoanController::class, 'history'])->name('history');
-    
+
     // Admin-only routes
     Route::middleware(['admin'])->group(function () {
         Route::get('/', [App\Http\Controllers\LoanController::class, 'index'])->name('index');
@@ -184,7 +186,7 @@ Route::prefix('reservations')->name('reservations.')->middleware(['auth'])->grou
     Route::get('/history', [App\Http\Controllers\ReservationController::class, 'history'])->name('history');
     Route::get('/{reservation}', [App\Http\Controllers\ReservationController::class, 'show'])->name('show');
     Route::post('/{reservation}/cancel', [App\Http\Controllers\ReservationController::class, 'cancel'])->name('cancel');
-    
+
     // Admin-only routes
     Route::middleware(['admin'])->group(function () {
         Route::get('/statistics', [App\Http\Controllers\ReservationController::class, 'statistics'])->name('statistics');

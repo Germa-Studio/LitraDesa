@@ -82,7 +82,7 @@ class BookCategory extends Model
      */
     public function books(): HasMany
     {
-        return $this->hasMany(Book::class, 'category_id');
+        return $this->hasMany(Book::class, 'book_category_id');
     }
 
     /**

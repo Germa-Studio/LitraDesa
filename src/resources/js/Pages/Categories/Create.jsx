@@ -1,27 +1,27 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import { Head, Link, useForm } from "@inertiajs/react";
 
 export default function Create({ auth, parentCategories, parentId }) {
     const { data, setData, post, processing, errors } = useForm({
-        parent_id: parentId || '',
-        name: '',
-        slug: '',
-        description: '',
+        parent_id: parentId || "",
+        name: "",
+        slug: "",
+        description: "",
         is_active: true,
         sort_order: 0,
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('categories.store'));
+        post(route("categories.store"));
     };
 
     const generateSlug = (name) => {
         return name
             .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-")
             .trim();
     };
 
@@ -30,7 +30,7 @@ export default function Create({ auth, parentCategories, parentId }) {
         setData({
             ...data,
             name,
-            slug: data.slug || generateSlug(name),
+            slug: generateSlug(name),
         });
     };
 
@@ -43,7 +43,7 @@ export default function Create({ auth, parentCategories, parentId }) {
                         Tambah Kategori Buku
                     </h2>
                     <Link
-                        href={route('categories.index')}
+                        href={route("categories.index")}
                         className="text-gray-600 hover:text-gray-900"
                     >
                         Kembali
@@ -60,34 +60,51 @@ export default function Create({ auth, parentCategories, parentId }) {
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 {/* Parent Category */}
                                 <div>
-                                    <label htmlFor="parent_id" className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        htmlFor="parent_id"
+                                        className="block text-sm font-medium text-gray-700"
+                                    >
                                         Kategori Induk (Opsional)
                                     </label>
                                     <select
                                         id="parent_id"
                                         value={data.parent_id}
-                                        onChange={(e) => setData('parent_id', e.target.value)}
+                                        onChange={(e) =>
+                                            setData("parent_id", e.target.value)
+                                        }
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     >
-                                        <option value="">-- Tidak Ada (Kategori Utama) --</option>
+                                        <option value="">
+                                            -- Tidak Ada (Kategori Utama) --
+                                        </option>
                                         {parentCategories.map((category) => (
-                                            <option key={category.id} value={category.id}>
+                                            <option
+                                                key={category.id}
+                                                value={category.id}
+                                            >
                                                 {category.name}
                                             </option>
                                         ))}
                                     </select>
                                     {errors.parent_id && (
-                                        <p className="mt-1 text-sm text-red-600">{errors.parent_id}</p>
+                                        <p className="mt-1 text-sm text-red-600">
+                                            {errors.parent_id}
+                                        </p>
                                     )}
                                     <p className="mt-1 text-sm text-gray-500">
-                                        Pilih kategori induk jika ini adalah sub-kategori
+                                        Pilih kategori induk jika ini adalah
+                                        sub-kategori
                                     </p>
                                 </div>
 
                                 {/* Name */}
                                 <div>
-                                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                                        Nama Kategori <span className="text-red-500">*</span>
+                                    <label
+                                        htmlFor="name"
+                                        className="block text-sm font-medium text-gray-700"
+                                    >
+                                        Nama Kategori{" "}
+                                        <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="text"
@@ -98,67 +115,98 @@ export default function Create({ auth, parentCategories, parentId }) {
                                         required
                                     />
                                     {errors.name && (
-                                        <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                                        <p className="mt-1 text-sm text-red-600">
+                                            {errors.name}
+                                        </p>
                                     )}
                                 </div>
 
                                 {/* Slug */}
                                 <div>
-                                    <label htmlFor="slug" className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        htmlFor="slug"
+                                        className="block text-sm font-medium text-gray-700"
+                                    >
                                         Slug (URL-friendly)
                                     </label>
                                     <input
                                         type="text"
                                         id="slug"
                                         value={data.slug}
-                                        onChange={(e) => setData('slug', e.target.value)}
+                                        onChange={(e) =>
+                                            setData("slug", e.target.value)
+                                        }
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                         placeholder="otomatis dari nama"
                                     />
                                     {errors.slug && (
-                                        <p className="mt-1 text-sm text-red-600">{errors.slug}</p>
+                                        <p className="mt-1 text-sm text-red-600">
+                                            {errors.slug}
+                                        </p>
                                     )}
                                     <p className="mt-1 text-sm text-gray-500">
-                                        Kosongkan untuk generate otomatis dari nama
+                                        Kosongkan untuk generate otomatis dari
+                                        nama
                                     </p>
                                 </div>
 
                                 {/* Description */}
                                 <div>
-                                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        htmlFor="description"
+                                        className="block text-sm font-medium text-gray-700"
+                                    >
                                         Deskripsi
                                     </label>
                                     <textarea
                                         id="description"
                                         value={data.description}
-                                        onChange={(e) => setData('description', e.target.value)}
+                                        onChange={(e) =>
+                                            setData(
+                                                "description",
+                                                e.target.value,
+                                            )
+                                        }
                                         rows={4}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                         placeholder="Deskripsi kategori (opsional)"
                                     />
                                     {errors.description && (
-                                        <p className="mt-1 text-sm text-red-600">{errors.description}</p>
+                                        <p className="mt-1 text-sm text-red-600">
+                                            {errors.description}
+                                        </p>
                                     )}
                                 </div>
 
                                 {/* Sort Order */}
                                 <div>
-                                    <label htmlFor="sort_order" className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        htmlFor="sort_order"
+                                        className="block text-sm font-medium text-gray-700"
+                                    >
                                         Urutan
                                     </label>
                                     <input
                                         type="number"
                                         id="sort_order"
                                         value={data.sort_order}
-                                        onChange={(e) => setData('sort_order', parseInt(e.target.value))}
+                                        onChange={(e) =>
+                                            setData(
+                                                "sort_order",
+                                                parseInt(e.target.value),
+                                            )
+                                        }
                                         min="0"
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     />
                                     {errors.sort_order && (
-                                        <p className="mt-1 text-sm text-red-600">{errors.sort_order}</p>
+                                        <p className="mt-1 text-sm text-red-600">
+                                            {errors.sort_order}
+                                        </p>
                                     )}
                                     <p className="mt-1 text-sm text-gray-500">
-                                        Angka lebih kecil akan ditampilkan lebih dulu
+                                        Angka lebih kecil akan ditampilkan lebih
+                                        dulu
                                     </p>
                                 </div>
 
@@ -168,21 +216,31 @@ export default function Create({ auth, parentCategories, parentId }) {
                                         type="checkbox"
                                         id="is_active"
                                         checked={data.is_active}
-                                        onChange={(e) => setData('is_active', e.target.checked)}
+                                        onChange={(e) =>
+                                            setData(
+                                                "is_active",
+                                                e.target.checked,
+                                            )
+                                        }
                                         className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                     />
-                                    <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
+                                    <label
+                                        htmlFor="is_active"
+                                        className="ml-2 block text-sm text-gray-900"
+                                    >
                                         Aktifkan kategori
                                     </label>
                                 </div>
                                 {errors.is_active && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.is_active}</p>
+                                    <p className="mt-1 text-sm text-red-600">
+                                        {errors.is_active}
+                                    </p>
                                 )}
 
                                 {/* Submit Buttons */}
                                 <div className="flex items-center justify-end space-x-3">
                                     <Link
-                                        href={route('categories.index')}
+                                        href={route("categories.index")}
                                         className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300"
                                     >
                                         Batal
@@ -192,7 +250,9 @@ export default function Create({ auth, parentCategories, parentId }) {
                                         disabled={processing}
                                         className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
                                     >
-                                        {processing ? 'Menyimpan...' : 'Simpan Kategori'}
+                                        {processing
+                                            ? "Menyimpan..."
+                                            : "Simpan Kategori"}
                                     </button>
                                 </div>
                             </form>

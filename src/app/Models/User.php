@@ -7,6 +7,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -60,6 +61,21 @@ class User extends Authenticatable
             'password' => 'hashed',
             'approved_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = ['is_admin'];
+
+    /**
+     * Get the is_admin attribute.
+     */
+    public function getIsAdminAttribute(): bool
+    {
+        return $this->isAdmin();
     }
 
     /**
@@ -124,6 +140,26 @@ class User extends Authenticatable
     public function processedReturns(): HasMany
     {
         return $this->hasMany(Loan::class, 'returned_by');
+    }
+
+    /**
+     * Get the roles assigned to this user.
+     */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'user_role')
+            ->withPivot('assigned_at', 'assigned_by')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the permissions assigned directly to this user.
+     */
+    public function permissions(): BelongsToMany
+    {
+        return $this->belongsToMany(Permission::class, 'user_permission')
+            ->withPivot('assigned_at', 'assigned_by')
+            ->withTimestamps();
     }
 
     /**
@@ -228,5 +264,205 @@ class User extends Authenticatable
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
+    }
+
+    /**
+     * Check if user has a specific role.
+     */
+    public function hasRole(string|array $roles): bool
+    {
+        if (is_array($roles)) {
+            return $this->roles()->whereIn('name', $roles)->exists();
+        }
+
+        return $this->roles()->where('name', $roles)->exists();
+    }
+
+    /**
+     * Check if user has any of the given roles.
+     */
+    public function hasAnyRole(array $roles): bool
+    {
+        return $this->roles()->whereIn('name', $roles)->exists();
+    }
+
+    /**
+     * Check if user has all of the given roles.
+     */
+    public function hasAllRoles(array $roles): bool
+    {
+        return $this->roles()->whereIn('name', $roles)->count() === count($roles);
+    }
+
+    /**
+     * Check if user has a specific permission (via role or direct assignment).
+     */
+    public function hasPermission(string $permissionName): bool
+    {
+        // Check direct permissions
+        if ($this->permissions()->where('name', $permissionName)->exists()) {
+            return true;
+        }
+
+        // Check permissions via roles
+        return $this->roles()
+            ->whereHas('permissions', function ($query) use ($permissionName) {
+                $query->where('name', $permissionName);
+            })
+            ->exists();
+    }
+
+    /**
+     * Check if user has any of the given permissions.
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user has all of the given permissions.
+     */
+    public function hasAllPermissions(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if (!$this->hasPermission($permission)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Assign role to user.
+     */
+    public function assignRole(Role|string $role, ?int $assignedBy = null): self
+    {
+        if (is_string($role)) {
+            $role = Role::where('name', $role)->firstOrFail();
+        }
+
+        $this->roles()->syncWithoutDetaching([
+            $role->id => [
+                'assigned_at' => now(),
+                'assigned_by' => $assignedBy,
+            ]
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Remove role from user.
+     */
+    public function removeRole(Role|string $role): self
+    {
+        if (is_string($role)) {
+            $role = Role::where('name', $role)->firstOrFail();
+        }
+
+        $this->roles()->detach($role->id);
+
+        return $this;
+    }
+
+    /**
+     * Sync roles for user.
+     */
+    public function syncRoles(array $roles, ?int $assignedBy = null): self
+    {
+        $roleIds = [];
+
+        foreach ($roles as $role) {
+            if ($role instanceof Role) {
+                $roleIds[$role->id] = [
+                    'assigned_at' => now(),
+                    'assigned_by' => $assignedBy,
+                ];
+            } else {
+                $roleModel = Role::where('name', $role)->firstOrFail();
+                $roleIds[$roleModel->id] = [
+                    'assigned_at' => now(),
+                    'assigned_by' => $assignedBy,
+                ];
+            }
+        }
+
+        $this->roles()->sync($roleIds);
+
+        return $this;
+    }
+
+    /**
+     * Give permission directly to user.
+     */
+    public function givePermissionTo(Permission|string $permission, ?int $assignedBy = null): self
+    {
+        if (is_string($permission)) {
+            $permission = Permission::where('name', $permission)->firstOrFail();
+        }
+
+        $this->permissions()->syncWithoutDetaching([
+            $permission->id => [
+                'assigned_at' => now(),
+                'assigned_by' => $assignedBy,
+            ]
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Revoke permission from user.
+     */
+    public function revokePermissionTo(Permission|string $permission): self
+    {
+        if (is_string($permission)) {
+            $permission = Permission::where('name', $permission)->firstOrFail();
+        }
+
+        $this->permissions()->detach($permission->id);
+
+        return $this;
+    }
+
+    /**
+     * Get all permissions for user (from roles and direct assignments).
+     */
+    public function getAllPermissions(): \Illuminate\Support\Collection
+    {
+        $directPermissions = $this->permissions;
+
+        $rolePermissions = $this->roles()
+            ->with('permissions')
+            ->get()
+            ->pluck('permissions')
+            ->flatten()
+            ->unique('id');
+
+        return $directPermissions->merge($rolePermissions)->unique('id');
+    }
+
+    /**
+     * Check if user is super admin.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('super_admin');
+    }
+
+    /**
+     * Check if user is librarian.
+     */
+    public function isLibrarian(): bool
+    {
+        return $this->hasRole('librarian');
     }
 }

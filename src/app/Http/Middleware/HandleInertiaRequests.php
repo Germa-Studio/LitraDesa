@@ -39,6 +39,7 @@ class HandleInertiaRequests extends Middleware
                     'role' => $request->user()->role,
                     'status' => $request->user()->status,
                     'qr_code' => $request->user()->qr_code,
+                    'is_admin' => $request->user()->is_admin,
                 ] : null,
             ],
         ];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -17,7 +18,7 @@ class AdminSeeder extends Seeder
     public function run(): void
     {
         // Create default admin user
-        User::create([
+        $admin = User::create([
             'name' => 'Admin LitraDesa',
             'email' => 'admin@litradesa.id',
             'email_verified_at' => now(),
@@ -32,6 +33,12 @@ class AdminSeeder extends Seeder
             'approved_at' => now(),
             'remember_token' => Str::random(10),
         ]);
+
+        // Assign admin role
+        $adminRole = Role::where('name', 'admin')->first();
+        if ($adminRole) {
+            $admin->assignRole($adminRole);
+        }
 
         $this->command->info('Admin user created successfully!');
         $this->command->info('Email: admin@litradesa.id');
