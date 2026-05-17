@@ -159,21 +159,17 @@ Route::prefix('search')->name('search.')->middleware(['auth'])->group(function (
 
 // Loan Management Routes
 Route::prefix('loans')->name('loans.')->middleware(['auth'])->group(function () {
-    // Member can view their own loan history
-    Route::get('/history', [App\Http\Controllers\LoanController::class, 'history'])->name('history');
-
     // Admin-only routes
     Route::middleware(['admin'])->group(function () {
         Route::get('/', [App\Http\Controllers\LoanController::class, 'index'])->name('index');
         Route::get('/create', [App\Http\Controllers\LoanController::class, 'create'])->name('create');
         Route::post('/', [App\Http\Controllers\LoanController::class, 'store'])->name('store');
-        Route::get('/overdue-report', [App\Http\Controllers\LoanController::class, 'overdueReport'])->name('overdue-report');
-        Route::get('/popular-books', [App\Http\Controllers\LoanController::class, 'popularBooksReport'])->name('popular-books');
         Route::get('/{loan}', [App\Http\Controllers\LoanController::class, 'show'])->name('show');
-        Route::get('/{loan}/return', [App\Http\Controllers\LoanController::class, 'returnForm'])->name('return-form');
-        Route::post('/return', [App\Http\Controllers\LoanController::class, 'processReturn'])->name('process-return');
-        Route::post('/{loan}/mark-lost', [App\Http\Controllers\LoanController::class, 'markAsLost'])->name('mark-lost');
-        Route::get('/user/{user}/history', [App\Http\Controllers\LoanController::class, 'history'])->name('user-history');
+        Route::get('/{loan}/edit', [App\Http\Controllers\LoanController::class, 'edit'])->name('edit');
+        Route::patch('/{loan}', [App\Http\Controllers\LoanController::class, 'update'])->name('update');
+        Route::delete('/{loan}', [App\Http\Controllers\LoanController::class, 'destroy'])->name('destroy');
+        Route::get('/member/{user}/history', [App\Http\Controllers\LoanController::class, 'memberHistory'])->name('member-history');
+        Route::get('/book/{book}/history', [App\Http\Controllers\LoanController::class, 'bookHistory'])->name('book-history');
     });
 });
 
